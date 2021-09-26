@@ -103,7 +103,4 @@ def parse_icns_file(fname):
             key, size = icns_header_read(fp.read(8))
             if not key:
                 break  # EOF
-            # TODO: remove test case
-            if key in ['ICON', 'icm#', 'icm4', 'icm8']:
-                print('YAAAY', key, fname)
             yield key, fp.read(size - 8)  # -8 header

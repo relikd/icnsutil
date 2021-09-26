@@ -69,7 +69,7 @@ class Media:
             return PackBytes.unpack(data[4:])  # remove ARGB header
         if ext is None or ext == 'rgb':  # RGB files dont have a magic number
             if self.key == 'it32':
-                data = data[4:]  # TODO: dirty fix for it32 \x00\x00\x00\x00
+                data = data[4:]
             return PackBytes.unpack(data)
         return data
 
