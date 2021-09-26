@@ -1,0 +1,31 @@
+body {margin: 2em; font-family: sans-serif;}
+#inspector {letter-spacing: -1px;}
+#inspector h3 {margin: 3em 0 1.5em;}
+#inspector span {padding: 0 3px; line-height: 3ex;}
+#inspector span.head {background: #9F9;}
+#inspector span.ctrl {background: #FAA;}
+#inspector span.len {background: #AAF;}
+#inspector span.data {background: #EEE;}
+#inspector span.head::before, span.len::before {
+  content: attr(title);
+  position: relative;
+  left: 0;
+  bottom: 1.7em;
+  display: inline-block;
+  font-size: 0.8em;
+  width: 0;
+  white-space: nowrap;
+}
+/* image viewer */
+#images {margin-top: 1em;}
+#images>div {
+  width: max-content;
+  display: inline-block;
+  padding: 0 10px;
+  margin-right: 10px;
+  vertical-align: top;
+  border: .5px solid gray;
+}
+#images>div>h3 {margin: 7px 0 0;}
+#images>div>p {font-size: 0.8em; margin: 0 0 7px; color: gray;}
+#images>div>canvas {border: .5px solid gray;}

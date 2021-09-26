@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html ondrop="dropfile(event, 'input')" ondragover="event.preventDefault();">
+<head>
+<meta charset="utf-8">
+<title>Icns Inspector</title>
+<link rel="stylesheet" href="style.css">
+<script type="text/javascript" src="script.js"></script>
+</head>
+<body>
+    <h1>Icns Inspector</h1>
+    <textarea id="input" name="data" rows="10" style="width: 98%;" placeholder="41524742 81000901 ... or drag-n-drop file" onkeyup="inspect_into(this, 'inspector')" autocomplete="off"></textarea>
+    <code id="inspector"></code>
+</body>
+</html>

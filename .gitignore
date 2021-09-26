@@ -1,0 +1,4 @@
+.DS_Store
+/*.txt
+/tests/format-support-*/
+/tests/fixtures/tmp_*
