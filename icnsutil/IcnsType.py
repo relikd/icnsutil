@@ -22,7 +22,7 @@ class Media:
     def __init__(self, key, types, size=None, *,
                  ch=None, bits=None, os=None, desc=''):
         self.key = key
-        self.types = frozenset(types if type(types) == list else [types])
+        self.types = types if type(types) == list else [types]
         self.size = (size, size) if type(size) == int else size
         self.availability = os
         self.desc = desc
@@ -104,7 +104,7 @@ class Media:
 
     def __repr__(self):
         return '<{}: {}, {}.{}>'.format(type(self).__name__, self.key,
-                                        self.filename(), list(self.types)[0])
+                                        self.filename(), self.types[0])
 
     def __str__(self):
         T = ''

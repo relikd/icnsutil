@@ -45,16 +45,20 @@ function is_it32(ext, itype, first4b) {
     return false;
 }
 
+function get_length(hex, i) {
+    return Number('0x'+hex.substring(i, i + 8));
+}
+
+function as_str(hex, i_start, i_end) {
+    var str = '';
+    for (var u = i_start; u < i_end; u += 2)
+        str += String.fromCharCode(parseInt(hex.substr(u, 2), 16));
+    return str;
+}
+
 function* parse_file(hex_str) {
-    function get_length(hex, i) { return Number('0x'+hex.substring(i, i + 8)); }
-    function get_str(hex, i, len=8) {
-        var str = '';
-        for (var u = i; u < i + len; u += 2)
-            str += String.fromCharCode(parseInt(hex.substr(u, 2), 16));
-        return str;
-    }
     function get_media_ext(itype, idx, len) {
-        let ext = determine_file_ext(get_str(hex_str, idx, 16));
+        let ext = determine_file_ext(as_str(hex_str, idx, idx + 16));
         if (ext || !itype)
             return [ext, idx, idx + len];
         return [icns_type(itype), idx, idx + len];
@@ -67,12 +71,12 @@ function* parse_file(hex_str) {
         yield ['icns', i, num, null];
         i += 8 * 2;
         while (i < hex_str.length) {
-            let head = get_str(hex_str, i);
+            let head = as_str(hex_str, i, i + 8);
             num = get_length(hex_str, i + 8);
             yield [head, i, num, get_media_ext(head, i + 16, num * 2 - 16)];
             i += num * 2;
         }
-    } else if (ext[0] == 'argb' || ext[0] == null) {
+    } else {
         yield [null, 0, hex_str.length, ext];
     }
 }
@@ -225,13 +229,49 @@ function inspect_into(sender, dest) {
 }
 
 function put_images_into(sender, dest) {
+    function get_image_size(data, ext, i) {
+        if (ext == 'png') {
+            let w = get_length(data, i + 16 * 2);
+            let h = get_length(data, i + 20 * 2);
+            return [w, h];
+        }
+        if (ext == 'jp2') {
+            if (data.substring(i, i + 8).toUpperCase() == 'FF4FFF51') {
+                let w = get_length(data, i + 8 * 2);
+                let h = get_length(data, i + 12 * 2);
+                return [w, h];
+            }
+            let len_ftype = get_length(data, i + 12 * 2);
+            // file header + type box + header box (super box) + image header box
+            let offset = 12 + len_ftype + 8 + 8;
+            let h = get_length(data, i + offset * 2);
+            let w = get_length(data, i + offset * 2 + 8);
+            return [w, h];
+        }
+    }
+    function append_img_div(head, typ, w, h) {
+        let div = document.createElement('div');
+        var desc = typ || '?';
+        if (w) { desc += ': ' + w + 'x' + h; }
+        div.innerHTML = `<h3>${head || ''}</h3><p>${desc}</p>`;
+        output.appendChild(div);
+        return div;
+    }
     let src = sender.value.replace(/\s/g, '');
     let output = document.getElementById(dest);
     output.innerHTML = '';
     for (let [head, , , ext] of parse_file(src)) {
         if (!ext) continue;
-        if (['argb', 'rgb', 'mask', 'iconmask', 'icon1b', null].indexOf(ext[0]) == -1)
+        if (ext[0] == 'png' || ext[0] == 'jp2') {
+            let [w, h] = get_image_size(src, ext[0], ext[1]);
+            let img = append_img_div(head, ext[0], w, h);
+            img.innerHTML += `<img src="data:image/${ext[0]};base64,${btoa(as_str(src, ext[1], ext[2]))}" />`;
             continue;
+        }
+        if (['argb', 'rgb', 'mask', 'iconmask', 'icon1b', null].indexOf(ext[0]) == -1) {
+            append_img_div(head, ext[0]).innerHTML += `<p>${(ext[2]-ext[1])/2} Bytes</p>`;
+            continue;
+        }
 
         let num_arr = num_arr_from_hex(src.substring(ext[1], ext[2]));
         let ch;
@@ -249,9 +289,6 @@ function put_images_into(sender, dest) {
             ch = 3; data = expand_rgb(it32 ? num_arr.slice(4) : num_arr);
         }
         let [img, w] = make_image(data, ch);
-        let container = document.createElement('div');
-        container.innerHTML = `<h3>${head || ''}</h3><p>${w}x${w}</p>`
-        container.appendChild(img);
-        output.appendChild(container);
+        append_img_div(head, ext[0] || 'rgb', w, w).appendChild(img);
     }
 }

@@ -33,7 +33,7 @@ class IcnsFile:
                 # Check whether stored type is an expected file format
                 if not (iType.is_type(ext) if ext else iType.is_binary()):
                     yield 'Unexpected type for key {}: {} != {}'.format(
-                        key, ext or 'binary', list(iType.types))
+                        key, ext or 'binary', iType.types)
 
                 if ext in ['png', 'jp2', 'icns', 'plist']:
                     continue
@@ -102,7 +102,7 @@ class IcnsFile:
             try:
                 iType = IcnsType.get(key)
                 if not ext:
-                    ext = list(iType.types)[-1]
+                    ext = iType.types[-1]
                 desc = iType.filename(size_only=True)
                 txt += f', {ext or "binary"}: {desc}\n'
             except NotImplementedError:
