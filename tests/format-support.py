@@ -50,13 +50,13 @@ def generate_raw_rgb():
 
     os.makedirs('format-support-raw', exist_ok=True)
     for s in INFO.keys():
-        print(f'generate {s}x{s}.argb')
+        print('generate {}x{}.argb'.format(s, s))
         argb_data = testpattern(s, s, ch=4)
-        with open(f'format-support-raw/{s}x{s}.argb', 'wb') as fp:
+        with open('format-support-raw/{}x{}.argb'.format(s, s), 'wb') as fp:
             fp.write(argb_data)
-        print(f'generate {s}x{s}.rgb')
+        print('generate {}x{}.rgb'.format(s, s))
         rgb_data = testpattern(s, s, ch=3)
-        with open(f'format-support-raw/{s}x{s}.rgb', 'wb') as fp:
+        with open('format-support-raw/{}x{}.rgb'.format(s, s), 'wb') as fp:
             fp.write(rgb_data)
 
 
@@ -64,18 +64,18 @@ def generate_icns():
     os.makedirs('format-support-icns', exist_ok=True)
     with zipfile.ZipFile('format-support-raw.zip') as Zip:
         for s, keys in INFO.items():
-            print(f'generate icns for {s}x{s}')
+            print('generate icns for {}x{}'.format(s, s))
             for key in keys:
                 # JPEG 2000, PNG, and ARGB
                 for ext in ['jp2', 'png', 'argb']:
                     img = IcnsFile()
-                    with Zip.open(f'{s}x{s}.{ext}') as f:
+                    with Zip.open('{}x{}.{}'.format(s, s, ext)) as f:
                         img.add_media(key, data=f.read())
-                    img.write(f'format-support-icns/{s}-{key}-{ext}.icns',
-                              toc=False)
+                    img.write('format-support-icns/{}-{}-{}.icns'.format(
+                        s, key, ext), toc=False)
                 # RGB + mask
                 img = IcnsFile()
-                with Zip.open(f'{s}x{s}.rgb') as f:
+                with Zip.open('{}x{}.rgb'.format(s, s)) as f:
                     data = f.read()
                     if key == 'it32':
                         data = b'\x00\x00\x00\x00' + data
@@ -84,14 +84,15 @@ def generate_icns():
                 img.add_media('l8mk', data=b'\xFF' * 1024)
                 img.add_media('h8mk', data=b'\xFF' * 2304)
                 img.add_media('t8mk', data=b'\xFF' * 16384)
-                img.write(f'format-support-icns/{s}-{key}-rgb.icns', toc=False)
+                img.write('format-support-icns/{}-{}-rgb.icns'.format(s, key),
+                          toc=False)
 
 
 def generate_random_it32_header():
-    print(f'testing random it32 header')
+    print('testing random it32 header')
     os.makedirs('format-support-it32', exist_ok=True)
     with zipfile.ZipFile('format-support-raw.zip') as Zip:
-        with Zip.open(f'128x128.rgb') as f:
+        with Zip.open('128x128.rgb') as f:
             data = f.read()
 
     def random_header():
@@ -102,7 +103,7 @@ def generate_random_it32_header():
         img = IcnsFile()
         img.add_media('it32', data=random_header() + data)
         img.add_media('t8mk', data=b'\xFF' * 16384)
-        img.write(f'format-support-it32/{i}.icns', toc=False)
+        img.write('format-support-it32/{}.icns'.format(i), toc=False)
 
 
 if __name__ == '__main__':

@@ -23,7 +23,7 @@ class IcnsFile:
                 try:
                     iType = IcnsType.get(key)
                 except NotImplementedError:
-                    yield f'Unsupported icns type: {key}'
+                    yield 'Unsupported icns type: {}'.format(key)
                     continue
 
                 ext = RawData.determine_file_ext(data)
@@ -41,7 +41,7 @@ class IcnsFile:
                 # Check whether uncompressed size is equal to expected maxsize
                 if key == 'it32' and data[:4] != b'\x00\x00\x00\x00':
                     # TODO: check whether other it32 headers exist
-                    yield f'Unexpected it32 data header: {data[:4]}'
+                    yield 'Unexpected it32 data header: {}'.format(data[:4])
                 data = iType.decompress(data, ext)  # ignores non-compressable
 
                 # Check expected uncompressed maxsize
@@ -66,13 +66,15 @@ class IcnsFile:
             if not img or not mask:
                 if not img:
                     img, mask = mask, img
-                yield f'Missing key pair: {mask} found, {img} missing.'
+                yield 'Missing key pair: {} found, {} missing.'.format(
+                    mask, img)
 
         # Check duplicate image dimensions
         for x, y in [('is32', 'icp4'), ('il32', 'icp5'), ('it32', 'ic07'),
                      ('ic04', 'icp4'), ('ic05', 'icp5')]:
             if x in all_keys and y in all_keys:
-                yield f'Redundant keys: {x} and {y} have identical size.'
+                yield 'Redundant keys: {} and {} have identical size.'.format(
+                    x, y)
 
     @staticmethod
     def description(fname, *, verbose=False, indent=0):
@@ -88,15 +90,15 @@ class IcnsFile:
             # actually, icns length should be -8 (artificially appended header)
             size = len(data)
             txt += ' ' * indent
-            txt += f'{key}: {size} bytes'
+            txt += '{}: {} bytes'.format(key, size)
             if verbose:
-                txt += f', offset: {offset}'
+                txt += ', offset: {}'.format(offset)
                 offset += size + 8
             if key == 'name':
-                txt += f', value: "{data.decode("utf-8")}"\n'
+                txt += ', value: "{}"\n'.format(data.decode('utf-8'))
                 continue
             if key == 'icnV':
-                txt += f', value: {struct.unpack(">f", data)[0]}\n'
+                txt += ', value: {}\n'.format(struct.unpack('>f', data)[0])
                 continue
             ext = RawData.determine_file_ext(data)
             try:
@@ -104,9 +106,9 @@ class IcnsFile:
                 if not ext:
                     ext = iType.types[-1]
                 desc = iType.filename(size_only=True)
-                txt += f', {ext or "binary"}: {desc}\n'
+                txt += ', {}: {}\n'.format(ext or 'binary', desc)
             except NotImplementedError:
-                txt += f': UNKNOWN TYPE: {ext or data[:6]}\n'
+                txt += ': UNKNOWN TYPE: {}\n'.format(ext or data[:6])
         return txt
 
     def __init__(self, file=None):
@@ -139,7 +141,8 @@ class IcnsFile:
             key = IcnsType.guess(data, file).key
         # Check if type is unique
         if not force and key in self.media.keys():
-            raise KeyError(f'Image with identical key "{key}". File: {file}')
+            raise KeyError(
+                'Image with identical key "{}". File: {}'.format(key, file))
         self.media[key] = data
 
     def write(self, fname, *, toc=True):
@@ -171,7 +174,7 @@ class IcnsFile:
             outdir = (self.infile or 'in-memory.icns') + '.export'
             os.makedirs(outdir, exist_ok=True)
         elif not os.path.isdir(outdir):
-            raise NotADirectoryError(f'"{outdir}" is not a directory. Abort.')
+            raise OSError('"{}" is not a directory. Abort.'.format(outdir))
 
         exported_files = {'_': self.infile}
         keys = list(self.media.keys())
@@ -255,7 +258,7 @@ class IcnsFile:
 
         if allowed_ext and ext not in allowed_ext:
             return None
-        fname = os.path.join(outdir, f'{fname}.{ext}')
+        fname = os.path.join(outdir, fname + '.' + ext)
         with open(fname, 'wb') as fp:
             fp.write(data)
         return fname
@@ -278,8 +281,9 @@ class IcnsFile:
 
     def __repr__(self):
         lst = ', '.join(str(k) for k in self.media.keys())
-        return f'<{type(self).__name__}: file={self.infile}, [{lst}]>'
+        return '<{}: file={}, [{}]>'.format(
+            type(self).__name__, self.infile, lst)
 
     def __str__(self):
-        return f'File: {self.infile or "-mem-"}\n' \
+        return 'File: ' + (self.infile or '-mem-') + '\n' \
             + IcnsFile._description(self.media.items(), indent=2)

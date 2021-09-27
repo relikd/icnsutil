@@ -32,8 +32,9 @@ def cli_compose(args):
     if not os.path.splitext(dest)[1]:
         dest += '.icns'  # for the lazy people
     if not args.force and os.path.exists(dest):
-        print(f'File "{dest}" already exists. Force overwrite with -f.',
-              file=stderr)
+        print(
+            'File "{}" already exists. Force overwrite with -f.'.format(dest),
+            file=stderr)
         return 1
     img = icnsutil.IcnsFile()
     for x in args.source:
@@ -126,13 +127,13 @@ def main():
         'source', nargs='+', type=PathExist('f'), metavar='src',
         help='One or more media files: png, argb, plist, icns.')
     cmd.set_defaults(func=cli_compose)
-    cmd.epilog = f'''
+    cmd.epilog = '''
 Notes:
 - TOC is optional but only a few bytes long (8b per media entry).
 - Icon dimensions are read directly from file.
 - Filename suffix "@2x.png" or "@2x.jp2" sets the retina flag.
 - Use one of these suffixes to automatically assign icns files:
-   {', '.join(f'{x.name.lower()}.icns' for x in icnsutil.IcnsType.Role)}
+   template, selected, dark
 '''
 
     # Print

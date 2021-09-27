@@ -140,4 +140,5 @@ class ArgbImage:
 
     def __repr__(self):
         typ = ['', 'Mono', 'Mono with Mask', 'RGB', 'RGBA'][self.channels]
-        return f'<{type(self).__name__}: {self.size[0]}x{self.size[1]} {typ}>'
+        return '<{}: {}x{} {}>'.format(
+            type(self).__name__, self.size[0], self.size[1], typ)

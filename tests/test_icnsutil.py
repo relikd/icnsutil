@@ -207,8 +207,10 @@ class TestIcnsType(unittest.TestCase):
             ('icp6', 'png', '', (64, 64), None),
             ('ic14', 'png', '@2x', (512, 512), None),
             ('info', 'plist', '', None, None),
-        ] + [(x.value, 'icns', '', None, None)
-             for x in IcnsType.Role]:
+            ('sbtp', 'icns', 'template', None, None),
+            ('slct', 'icns', 'selected', None, None),
+            (b'\xFD\xD9\x2F\xA8', 'icns', 'dark', None, None),
+        ]:
             m = IcnsType.get(key)
             self.assertEqual(m.size, size)
             self.assertTrue(m.is_type(ext))
@@ -227,7 +229,7 @@ class TestIcnsType(unittest.TestCase):
             x = IcnsType.guess(fp.read(), 'rgb.icns.argb')
             self.assertTrue(x.is_type('argb'))
             self.assertEqual(x.size, (16, 16))
-            self.assertEqual(x.retina, None)
+            self.assertEqual(x.retina, False)
             self.assertEqual(x.channels, 4)
             self.assertEqual(x.compressable, True)
         with open('256x256.jp2', 'rb') as fp:
