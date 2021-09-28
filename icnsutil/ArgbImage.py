@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-import PackBytes  # pack, unpack, msb_stream
-import IcnsType  # match_maxsize
+from . import IcnsType, PackBytes
 try:
     from PIL import Image
     PIL_ENABLED = True
@@ -108,6 +107,7 @@ class ArgbImage:
             raise ImportError('Install Pillow to support PNG conversion.')
         img = Image.open(fname, mode='r')
         self.size = img.size
+        self.channels = 4
         self.a = []
         self.r = []
         self.g = []

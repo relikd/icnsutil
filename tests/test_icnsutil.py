@@ -2,9 +2,9 @@
 import unittest
 import shutil  # rmtree
 import os  # chdir, listdir, makedirs, path, remove
-import sys
 if __name__ == '__main__':
-    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    import sys
+    sys.path[0] = os.path.dirname(sys.path[0])
 from icnsutil import *
 
 
@@ -68,6 +68,11 @@ class TestArgbImage(unittest.TestCase):
             self.assertEqual(img.size, (16, 16))
             self.assertEqual(img.a, [255] * 16 * 16)
 
+    @unittest.skipUnless(PIL_ENABLED, 'PIL_ENABLED == False')
+    def test_attributes(self):
+        # will raise AttributeError if _load_png didnt init all attrributes
+        str(ArgbImage(file='rgb.icns.png'))
+
     def test_data_getter(self):
         img = ArgbImage(file='rgb.icns.argb')
         argb = img.argb_data(compress=True)
@@ -115,9 +120,9 @@ class TestIcnsFile(unittest.TestCase):
                              ['info', 'ic12', 'icsb', 'sb24', 'ic04',
                               'SB24', 'ic05', 'icsB', 'ic11', 'slct'])
         # Not an ICNS file
-        with self.assertRaises(TypeError):
+        with self.assertRaises(RawData.ParserError):
             IcnsFile(file='rgb.icns.argb')
-        with self.assertRaises(TypeError):
+        with self.assertRaises(RawData.ParserError):
             IcnsFile(file='rgb.icns.png')
 
     def test_load_file(self):
@@ -195,6 +200,32 @@ class TestIcnsFile(unittest.TestCase):
         is_invalid = any(IcnsFile.verify('selected.icns'))
         self.assertEqual(is_invalid, False)
 
+    def test_description(self):
+        str = IcnsFile.description('rgb.icns', indent=0)
+        self.assertEqual(str, '''
+ICN#: 256 bytes, iconmask: 32x32-mono
+il32: 2224 bytes, rgb: 32x32
+l8mk: 1024 bytes, mask: 32x32
+ics#: 64 bytes, iconmask: 16x16-mono
+is32: 705 bytes, rgb: 16x16
+s8mk: 256 bytes, mask: 16x16
+it32: 14005 bytes, rgb: 128x128
+t8mk: 16384 bytes, mask: 128x128
+'''.lstrip().replace('\n', os.linesep))
+        str = IcnsFile.description('selected.icns', verbose=True, indent=0)
+        self.assertEqual(str, '''
+info: 314 bytes, offset: 8, plist: info
+ic12: 1863 bytes, offset: 330, png: 32x32@2x
+icsb: 271 bytes, offset: 2201, argb: 18x18
+sb24: 748 bytes, offset: 2480, png: 24x24
+ic04: 215 bytes, offset: 3236, argb: 16x16
+SB24: 1681 bytes, offset: 3459, png: 24x24@2x
+ic05: 690 bytes, offset: 5148, argb: 32x32
+icsB: 1001 bytes, offset: 5846, png: 18x18@2x
+ic11: 1056 bytes, offset: 6855, png: 16x16@2x
+slct: 7660 bytes, offset: 7919, icns: selected
+'''.lstrip().replace('\n', os.linesep))
+
 
 class TestIcnsType(unittest.TestCase):
     def test_sizes(self):
@@ -238,6 +269,17 @@ class TestIcnsType(unittest.TestCase):
             self.assertEqual(x.size, (256, 256))
             self.assertEqual(x.compressable, False)
             self.assertEqual(x.availability, 10.5)
+        # Test rgb is detected by filename extension
+        with open('rgb.icns.rgb', 'rb') as fp:
+            x = IcnsType.guess(fp.read(), 'rgb.icns.rgb')
+            self.assertTrue(x.is_type('rgb'))
+            self.assertEqual(x.size, (16, 16))
+            self.assertEqual(x.retina, False)
+            self.assertEqual(x.channels, 3)
+            self.assertEqual(x.compressable, True)
+            fp.seek(0)
+            with self.assertRaises(IcnsType.CanNotDetermine):
+                x = IcnsType.guess(fp.read(), 'rgb.icns.bin')
 
     def test_img_mask_pairs(self):
         for x, y in IcnsType.enum_img_mask_pairs(['t8mk']):
@@ -310,9 +352,9 @@ class TestIcnsType(unittest.TestCase):
     def test_exceptions(self):
         with self.assertRaises(NotImplementedError):
             IcnsType.get('wrong key')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(IcnsType.CanNotDetermine):
             IcnsType.guess(b'\x00')
-        with self.assertRaises(ValueError):  # could be any icns
+        with self.assertRaises(IcnsType.CanNotDetermine):  # could be any icns
             with open('rgb.icns', 'rb') as fp:
                 IcnsType.guess(fp.read(6))
 
@@ -553,60 +595,68 @@ class TestIcp4RGB(TestExport):
                 self.OUTDIR, fname)), msg='File does not exist: ' + fname)
 
 
-if PIL_ENABLED:
-    class TestRGB_toPNG(TestExport):
-        INFILE = 'rgb.icns'
-        ARGS = {'convert_png': True}
+@unittest.skipUnless(PIL_ENABLED, 'PIL_ENABLED == False')
+class TestRGB_toPNG(TestExport):
+    INFILE = 'rgb.icns'
+    ARGS = {'convert_png': True}
 
-        def test_export_count(self):
-            self.assertExportCount(5)
+    def test_export_count(self):
+        self.assertExportCount(5)
 
-        def test_conversion(self):
-            img = ArgbImage(file=self.outfiles['il32'])
-            self.assertEqual(self.img.media['il32'], img.rgb_data())
-            self.assertEqual(self.img.media['l8mk'], img.mask_data())
-            self.assertTrue(self.outfiles['il32'].endswith('.png'))
+    def test_conversion(self):
+        img = ArgbImage(file=self.outfiles['il32'])
+        self.assertEqual(self.img.media['il32'], img.rgb_data())
+        self.assertEqual(self.img.media['l8mk'], img.mask_data())
+        self.assertTrue(self.outfiles['il32'].endswith('.png'))
 
-    class TestARGB_toPNG(TestExport):
-        INFILE = 'selected.icns'
-        ARGS = {'convert_png': True}
 
-        def test_export_count(self):
-            self.assertExportCount(10)
+@unittest.skipUnless(PIL_ENABLED, 'PIL_ENABLED == False')
+class TestARGB_toPNG(TestExport):
+    INFILE = 'selected.icns'
+    ARGS = {'convert_png': True}
 
-        def test_conversion(self):
-            img = ArgbImage(file=self.outfiles['ic05'])
-            self.assertEqual(self.img.media['ic05'], img.argb_data())
-            self.assertTrue(self.outfiles['ic05'].endswith('.png'))
-            img = ArgbImage(file=self.outfiles['ic04'])  # is a PNG
-            self.assertEqual(self.img.media['ic04'], img.argb_data())
-            self.assertTrue(self.outfiles['ic04'].endswith('.png'))
+    def test_export_count(self):
+        self.assertExportCount(10)
 
-    class TestNested_toPNG(TestExport):
-        INFILE = 'selected.icns'
-        ARGS = {'convert_png': True, 'recursive': True}
+    def test_conversion(self):
+        img = ArgbImage(file=self.outfiles['ic05'])
+        self.assertEqual(self.img.media['ic05'], img.argb_data())
+        self.assertTrue(self.outfiles['ic05'].endswith('.png'))
+        img = ArgbImage(file=self.outfiles['ic04'])  # is a PNG
+        self.assertEqual(self.img.media['ic04'], img.argb_data())
+        self.assertTrue(self.outfiles['ic04'].endswith('.png'))
 
-        def test_export_count(self):
-            self.assertExportCount(10 + 1)
 
-        def test_conversion(self):
-            fname = self.outfiles['slct']['ic05']
-            self.assertTrue(fname.endswith('.png'))
+@unittest.skipUnless(PIL_ENABLED, 'PIL_ENABLED == False')
+class TestNested_toPNG(TestExport):
+    INFILE = 'selected.icns'
+    ARGS = {'convert_png': True, 'recursive': True}
 
-    class TestPngOnlyNested_toPNG(TestExport):
-        INFILE = 'selected.icns'
-        ARGS = {'allowed_ext': 'png', 'convert_png': True, 'recursive': True}
+    def test_export_count(self):
+        self.assertExportCount(10 + 1)
 
-        def test_export_count(self):
-            self.assertExportCount(8 + 1)
-            self.assertExportCount(8, self.outfiles['slct']['_'] + '.export')
+    def test_conversion(self):
+        fname = self.outfiles['slct']['ic05']
+        self.assertTrue(fname.endswith('.png'))
 
-    class TestIcp4RGB_toPNG(TestExport):
-        INFILE = 'icp4rgb.icns'
-        ARGS = {'convert_png': True}
 
-        def test_export_count(self):
-            self.assertExportCount(2)
+@unittest.skipUnless(PIL_ENABLED, 'PIL_ENABLED == False')
+class TestPngOnlyNested_toPNG(TestExport):
+    INFILE = 'selected.icns'
+    ARGS = {'allowed_ext': 'png', 'convert_png': True, 'recursive': True}
+
+    def test_export_count(self):
+        self.assertExportCount(8 + 1)
+        self.assertExportCount(8, self.outfiles['slct']['_'] + '.export')
+
+
+@unittest.skipUnless(PIL_ENABLED, 'PIL_ENABLED == False')
+class TestIcp4RGB_toPNG(TestExport):
+    INFILE = 'icp4rgb.icns'
+    ARGS = {'convert_png': True}
+
+    def test_export_count(self):
+        self.assertExportCount(2)
 
 
 if __name__ == '__main__':

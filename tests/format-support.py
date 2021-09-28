@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-import os
-import sys
-import zipfile
+import os  # makedirs
+from zipfile import ZipFile
 from random import randint
 if __name__ == '__main__':
-    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    import sys
+    sys.path[0] = os.path.dirname(sys.path[0])
 from icnsutil import IcnsFile, PackBytes
 
 
@@ -62,7 +62,7 @@ def generate_raw_rgb():
 
 def generate_icns():
     os.makedirs('format-support-icns', exist_ok=True)
-    with zipfile.ZipFile('format-support-raw.zip') as Zip:
+    with ZipFile('format-support-raw.zip') as Zip:
         for s, keys in INFO.items():
             print('generate icns for {}x{}'.format(s, s))
             for key in keys:
@@ -91,7 +91,7 @@ def generate_icns():
 def generate_random_it32_header():
     print('testing random it32 header')
     os.makedirs('format-support-it32', exist_ok=True)
-    with zipfile.ZipFile('format-support-raw.zip') as Zip:
+    with ZipFile('format-support-raw.zip') as Zip:
         with Zip.open('128x128.rgb') as f:
             data = f.read()
 

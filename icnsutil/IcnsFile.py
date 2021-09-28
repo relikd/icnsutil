@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-import os  # path
-import sys  # stderr
-import RawData
-import IcnsType
+import os  # path, makedirs, remove
 import struct  # unpack float in _description()
-from ArgbImage import ArgbImage  # in _export_to_png()
+from sys import stderr
+from . import RawData, IcnsType
+from .ArgbImage import ArgbImage
 
 
 class IcnsFile:
@@ -49,7 +48,7 @@ class IcnsFile:
                     yield 'Invalid data length for {}: {} != {}'.format(
                         key, len(data), iType.maxsize)
         # if file is not an icns file
-        except TypeError as e:
+        except RawData.ParserError as e:
             yield e
             return
 
@@ -86,30 +85,32 @@ class IcnsFile:
         ''' Expects an enumerator with (key, size, data) '''
         txt = ''
         offset = 8  # already with icns header
-        for key, data in enumerator:
-            # actually, icns length should be -8 (artificially appended header)
-            size = len(data)
-            txt += ' ' * indent
-            txt += '{}: {} bytes'.format(key, size)
-            if verbose:
-                txt += ', offset: {}'.format(offset)
-                offset += size + 8
-            if key == 'name':
-                txt += ', value: "{}"\n'.format(data.decode('utf-8'))
-                continue
-            if key == 'icnV':
-                txt += ', value: {}\n'.format(struct.unpack('>f', data)[0])
-                continue
-            ext = RawData.determine_file_ext(data)
-            try:
-                iType = IcnsType.get(key)
-                if not ext:
-                    ext = iType.types[-1]
-                desc = iType.filename(size_only=True)
-                txt += ', {}: {}\n'.format(ext or 'binary', desc)
-            except NotImplementedError:
-                txt += ': UNKNOWN TYPE: {}\n'.format(ext or data[:6])
-        return txt
+        try:
+            for key, data in enumerator:
+                size = len(data)
+                txt += os.linesep + ' ' * indent
+                txt += '{}: {} bytes'.format(key, size)
+                if verbose:
+                    txt += ', offset: {}'.format(offset)
+                    offset += size + 8
+                if key == 'name':
+                    txt += ', value: "{}"'.format(data.decode('utf-8'))
+                    continue
+                if key == 'icnV':
+                    txt += ', value: {}'.format(struct.unpack('>f', data)[0])
+                    continue
+                ext = RawData.determine_file_ext(data)
+                try:
+                    iType = IcnsType.get(key)
+                    if not ext:
+                        ext = iType.fallback_ext()
+                    txt += ', ' + ext + ': ' + iType.filename(size_only=True)
+                except NotImplementedError:
+                    txt += ': UNKNOWN TYPE: ' + str(ext or data[:6])
+            return txt[len(os.linesep):] + os.linesep
+        # if file is not an icns file
+        except RawData.ParserError as e:
+            return ' ' * indent + str(e) + os.linesep
 
     def __init__(self, file=None):
         ''' Read .icns file and load bundled media files into memory. '''
@@ -123,7 +124,7 @@ class IcnsFile:
                 IcnsType.get(key)
             except NotImplementedError:
                 print('Warning: unknown media type: {}, {} bytes, "{}"'.format(
-                    key, len(data), file), file=sys.stderr)
+                    key, len(data), file), file=stderr)
 
     def add_media(self, key=None, *, file=None, data=None, force=False):
         '''
@@ -272,7 +273,6 @@ class IcnsFile:
         fname = iType.filename(key_only=key_suffix, size_only=True)
         fname = os.path.join(outdir, fname + '.png')
         if iType.bits == 1:
-            # return None
             ArgbImage.from_mono(data, iType).write_png(fname)
         else:
             mask_data = self.media[mask_key] if mask_key else None
@@ -285,5 +285,5 @@ class IcnsFile:
             type(self).__name__, self.infile, lst)
 
     def __str__(self):
-        return 'File: ' + (self.infile or '-mem-') + '\n' \
+        return 'File: ' + (self.infile or '-mem-') + os.linesep \
             + IcnsFile._description(self.media.items(), indent=2)

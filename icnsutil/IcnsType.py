@@ -4,13 +4,17 @@ Namespace for the ICNS format.
 @see https://en.wikipedia.org/wiki/Apple_Icon_Image_format
 '''
 import os  # path
-import RawData
-import PackBytes
+# import icnsutil  # PackBytes, RawData
+from . import PackBytes, RawData
+
+
+class CanNotDetermine(Exception):
+    pass
 
 
 class Media:
     __slots__ = ['key', 'types', 'size', 'channels', 'bits', 'availability',
-                 'desc', 'compressable', 'retina', 'maxsize']
+                 'desc', 'compressable', 'retina', 'maxsize', 'ext_certain']
 
     def __init__(self, key, types, size=None, *,
                  ch=None, bits=None, os=None, desc=''):
@@ -33,12 +37,19 @@ class Media:
         self.maxsize = None
         if size and ch and bits:
             self.maxsize = self.size[0] * self.size[1] * ch * bits // 8
+        self.ext_certain = all(x in ['png', 'argb', 'plist', 'jp2', 'icns']
+                               for x in self.types)
 
     def is_type(self, typ):
         return typ in self.types
 
     def is_binary(self) -> bool:
         return any(x in self.types for x in ['rgb', 'bin'])
+
+    def fallback_ext(self):
+        if self.channels in [1, 2]:
+            return self.desc  # guaranteed to be icon, mask, or iconmask
+        return self.types[-1]
 
     def split_channels(self, uncompressed_data):
         if self.channels not in [3, 4]:
@@ -108,7 +119,7 @@ class Media:
                     self.channels, self.bits, self.maxsize)
         if self.desc:
             T += self.desc + ', '
-        return '{}: {T}macOS {}+'.format(
+        return '{}: {}macOS {}+'.format(
             self.key, T, self.availability or '?')
 
 
@@ -231,9 +242,11 @@ def guess(data, filename=None):
             return _TYPES[bname]
 
     ext = RawData.determine_file_ext(data)
+    if not ext and filename and filename.endswith('.rgb'):
+        ext = 'rgb'
 
     # Guess by image size and retina flag
-    size = RawData.determine_image_size(data, ext)  # None for non-image types
+    size = RawData.determine_image_size(data, ext) if ext else None
     retina = bname.lower().endswith('@2x') if filename else False
     # Icns specific names
     desc = None
@@ -244,31 +257,34 @@ def guess(data, filename=None):
 
     choices = []
     for x in _TYPES.values():
-        if size != x.size:  # currently no support for RGB and binary data
-            continue
-        if ext and not x.is_type(ext):
-            continue
         if retina != x.retina:  # png + jp2
             continue
-        if desc and desc != x.desc:  # icns only
-            continue
+        if ext:
+            if size != x.size or not x.is_type(ext):
+                continue
+            if desc and desc != x.desc:  # icns only
+                continue
+        else:  # not ext
+            if x.ext_certain:
+                continue
         choices.append(x)
 
     if len(choices) == 1:
         return choices[0]
     # Try get most favorable type (sort order of types)
-    best_i = 99
-    best_choice = []
-    for x in choices:
-        i = x.types.index(ext)
-        if i < best_i:
-            best_i = i
-            best_choice = [x]
-        elif i == best_i:
-            best_choice.append(x)
-    if len(best_choice) == 1:
-        return best_choice[0]
+    if ext:
+        best_i = 99
+        best_choice = []
+        for x in choices:
+            i = x.types.index(ext)
+            if i < best_i:
+                best_i = i
+                best_choice = [x]
+            elif i == best_i:
+                best_choice.append(x)
+        if len(best_choice) == 1:
+            return best_choice[0]
     # Else
-    raise ValueError('Could not determine type – one of {} -- {}'.format(
-        [x.key for x in choices],
-        {'type': ext, 'size': size, 'retina': retina}))
+    raise CanNotDetermine(
+        'Could not determine type for file: "{}" – one of {}.'.format(
+            filename, [x.key for x in choices]))

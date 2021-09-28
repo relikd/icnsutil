@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import struct  # pack, unpack
-import PackBytes  # get_size
-import IcnsType  # get, match_maxsize
+from . import IcnsType, PackBytes
+
+
+class ParserError(Exception):
+    pass
 
 
 def determine_file_ext(data):
@@ -34,6 +37,10 @@ def determine_image_size(data, ext=None):
     elif ext == 'argb':
         total = PackBytes.get_size(data[4:])  # without ARGB header
         return IcnsType.match_maxsize(total, 'argb').size
+    elif ext == 'rgb':
+        if data[:4] == '\x00\x00\x00\x00':
+            data = data[4:]  # without it32 header
+        return IcnsType.match_maxsize(PackBytes.get_size(data), 'rgb').size
     elif ext == 'jp2':
         if data[:4] == b'\xFF\x4F\xFF\x51':
             return struct.unpack('>II', data[8:16])
@@ -91,13 +98,13 @@ def parse_icns_file(fname):
     '''
     Parse file and yield media entries: (key, data)
     :raises:
-        TypeError: if file is not an icns file ("icns" header missing)
+        ParserError: if file is not an icns file ("icns" header missing)
     '''
     with open(fname, 'rb') as fp:
         # Check whether it is an actual ICNS file
         magic_num, _ = icns_header_read(fp.read(8))  # ignore total size
         if magic_num != 'icns':
-            raise TypeError('Not an ICNS file, missing "icns" header.')
+            raise ParserError('Not an ICNS file, missing "icns" header.')
         # Read media entries as long as there is something to read
         while True:
             key, size = icns_header_read(fp.read(8))
