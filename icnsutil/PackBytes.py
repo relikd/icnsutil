@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-def pack(data):
-    ret = []
-    buf = []
+from typing import List, Iterator, Union
+
+
+def pack(data: List[int]) -> bytes:
+    ret = []  # type: List[int]
+    buf = []  # type: List[int]
     i = 0
 
     def flush_buf():
@@ -37,8 +40,8 @@ def pack(data):
     return bytes(ret)
 
 
-def unpack(data):
-    ret = []
+def unpack(data: bytes) -> List[int]:
+    ret = []  # type: List[int]
     i = 0
     end = len(data)
     while i < end:
@@ -52,7 +55,7 @@ def unpack(data):
     return ret
 
 
-def get_size(data):
+def get_size(data: bytes) -> int:
     count = 0
     i = 0
     end = len(data)
@@ -67,7 +70,7 @@ def get_size(data):
     return count
 
 
-def msb_stream(data, *, bits):
+def msb_stream(data: Union[bytes, List[int]], *, bits: int) -> Iterator[int]:
     if bits not in [1, 2, 4]:
         raise NotImplementedError('Unsupported bit-size.')
     c = 0

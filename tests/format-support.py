@@ -8,7 +8,7 @@ if __name__ == '__main__':
 from icnsutil import IcnsFile, PackBytes
 
 
-def main():
+def main() -> None:
     # generate_raw_rgb()
     generate_icns()
     generate_random_it32_header()
@@ -30,8 +30,8 @@ INFO = {
 }
 
 
-def generate_raw_rgb():
-    def testpattern(w, h, *, ch, compress=True):
+def generate_raw_rgb() -> None:
+    def testpattern(w: int, h: int, ch: int, compress: bool = True) -> bytes:
         ARGB = ch == 4
         sz = w * h
         if compress:
@@ -60,7 +60,7 @@ def generate_raw_rgb():
             fp.write(rgb_data)
 
 
-def generate_icns():
+def generate_icns() -> None:
     os.makedirs('format-support-icns', exist_ok=True)
     with ZipFile('format-support-raw.zip') as Zip:
         for s, keys in INFO.items():
@@ -88,14 +88,14 @@ def generate_icns():
                           toc=False)
 
 
-def generate_random_it32_header():
+def generate_random_it32_header() -> None:
     print('testing random it32 header')
     os.makedirs('format-support-it32', exist_ok=True)
     with ZipFile('format-support-raw.zip') as Zip:
         with Zip.open('128x128.rgb') as f:
             data = f.read()
 
-    def random_header():
+    def random_header() -> bytes:
         return bytes([randint(0, 255), randint(0, 255),
                       randint(0, 255), randint(0, 255)])
 

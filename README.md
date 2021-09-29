@@ -10,7 +10,8 @@ Here are two tools to open icns files directly in your browser. Both tools can b
 - The [inspector] shows the structure of an icns file (useful to understand byte-unpacking in ARGB and 24-bit RGB files).
 - The [viewer] displays icons in ARGB or 24-bit RGB file format.
 
-[inspector]: https://relikd.github.io/icnsutil/html/inspector.html[viewer]: https://relikd.github.io/icnsutil/html/viewer.html
+[inspector]: https://relikd.github.io/icnsutil/html/inspector.html
+[viewer]: https://relikd.github.io/icnsutil/html/viewer.html
 
 
 ## Usage
@@ -29,16 +30,16 @@ positional arguments:
 
 ```sh
 # extract
-./cli.py e ExistingIcon.icns -o ./outdir/
+icnsutil e ExistingIcon.icns -o ./outdir/
 
 # compose
-./cli.py c NewIcon.icns 16x16.png 16x16@2x.png *.jp2
+icnsutil c NewIcon.icns 16x16.png 16x16@2x.png *.jp2
 
 # print
-./cli.py p ExistingIcon.icns
+icnsutil p ExistingIcon.icns
 
 # verify valid format
-./cli.py t ExistingIcon.icns
+icnsutil t ExistingIcon.icns
 ```
 
 

@@ -2,6 +2,7 @@
 import unittest
 import shutil  # rmtree
 import os  # chdir, listdir, makedirs, path, remove
+from typing import Optional, Dict, Any
 if __name__ == '__main__':
     import sys
     sys.path[0] = os.path.dirname(sys.path[0])
@@ -41,7 +42,7 @@ class TestArgbImage(unittest.TestCase):
         self.assertEqual(img.g, [0] * w * w)
         self.assertEqual(img.b, [255] * w * w)
         # Test setting mask manually
-        img.load_mask(data=[117] * w * w)
+        img.load_mask(data=b'\x75' * w * w)
         self.assertEqual(img.size, (w, w))
         self.assertEqual(img.a, [117] * w * w)
         self.assertEqual(img.r, [128] * w * w)
@@ -70,8 +71,10 @@ class TestArgbImage(unittest.TestCase):
 
     @unittest.skipUnless(PIL_ENABLED, 'PIL_ENABLED == False')
     def test_attributes(self):
+        img = ArgbImage(file='rgb.icns.png')
+        self.assertTrue(img.channels != 0)
         # will raise AttributeError if _load_png didnt init all attrributes
-        str(ArgbImage(file='rgb.icns.png'))
+        str(img)
 
     def test_data_getter(self):
         img = ArgbImage(file='rgb.icns.argb')
@@ -319,9 +322,6 @@ class TestIcnsType(unittest.TestCase):
 
     def test_match_maxsize(self):
         for typ, size, key in [
-            ('bin', 512, 'icl4'),
-            ('bin', 192, 'icm8'),
-            ('png', 768, 'icp4'),
             ('rgb', 768, 'is32'),
             ('rgb', 3072, 'il32'),
             ('rgb', 6912, 'ih32'),
@@ -332,6 +332,13 @@ class TestIcnsType(unittest.TestCase):
         ]:
             iType = IcnsType.match_maxsize(size, typ)
             self.assertEqual(iType.key, key, msg=f'{typ} ({size}) != {key}')
+        for typ, size, key in [
+            ('bin', 512, 'icl4'),
+            ('bin', 192, 'icm8'),
+            ('png', 768, 'icp4'),
+        ]:
+            with self.assertRaises(AssertionError):
+                IcnsType.match_maxsize(size, typ)
 
     def test_decompress(self):
         # Test ARGB deflate
@@ -347,7 +354,7 @@ class TestIcnsType(unittest.TestCase):
         d = IcnsType.get('it32').decompress(data)
         self.assertEqual(len(d), 1966)  # decompress removes 4-byte it32-header
         d = IcnsType.get('ic04').decompress(data, ext='png')
-        self.assertEqual(len(d), 705)  # if png, dont decompress
+        self.assertEqual(d, None)  # if png, dont decompress
 
     def test_exceptions(self):
         with self.assertRaises(NotImplementedError):
@@ -417,10 +424,10 @@ class TestRawData(unittest.TestCase):
 #######################
 
 class TestExport(unittest.TestCase):
-    INFILE = None
-    OUTDIR = None  # set in setUpClass
+    INFILE = None  # type: Optional[str]
+    OUTDIR = None  # type: Optional[str] # set in setUpClass
     CLEANUP = True  # for debugging purposes
-    ARGS = {}
+    ARGS = {}  # type: Dict[str, Any]
 
     @classmethod
     def setUpClass(cls):

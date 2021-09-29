@@ -4,7 +4,7 @@ Namespace for the ICNS format.
 @see https://en.wikipedia.org/wiki/Apple_Icon_Image_format
 '''
 import os  # path
-# import icnsutil  # PackBytes, RawData
+from typing import Union, Optional, Tuple, Iterator, List, Iterable, Dict
 from . import PackBytes, RawData
 
 
@@ -13,14 +13,17 @@ class CanNotDetermine(Exception):
 
 
 class Media:
+    KeyT = Union[str, bytes]
     __slots__ = ['key', 'types', 'size', 'channels', 'bits', 'availability',
                  'desc', 'compressable', 'retina', 'maxsize', 'ext_certain']
 
-    def __init__(self, key, types, size=None, *,
-                 ch=None, bits=None, os=None, desc=''):
+    def __init__(self, key: KeyT, types: list,
+                 size: Optional[Union[int, Tuple[int, int]]] = None,
+                 *, ch: Optional[int] = None, bits: Optional[int] = None,
+                 os: Optional[float] = None, desc: str = '') -> None:
         self.key = key
-        self.types = types if type(types) == list else [types]
-        self.size = (size, size) if type(size) == int else size
+        self.types = types
+        self.size = (size, size) if isinstance(size, int) else size
         self.availability = os
         self.desc = desc
         # computed properties
@@ -34,24 +37,25 @@ class Media:
             bits = 8
         self.channels = ch
         self.bits = bits
-        self.maxsize = None
-        if size and ch and bits:
+        self.maxsize = None  # type: Optional[int]
+        if self.size and ch and bits:
             self.maxsize = self.size[0] * self.size[1] * ch * bits // 8
         self.ext_certain = all(x in ['png', 'argb', 'plist', 'jp2', 'icns']
                                for x in self.types)
 
-    def is_type(self, typ):
+    def is_type(self, typ: str) -> bool:
         return typ in self.types
 
     def is_binary(self) -> bool:
         return any(x in self.types for x in ['rgb', 'bin'])
 
-    def fallback_ext(self):
+    def fallback_ext(self) -> str:
         if self.channels in [1, 2]:
             return self.desc  # guaranteed to be icon, mask, or iconmask
         return self.types[-1]
 
-    def split_channels(self, uncompressed_data):
+    def split_channels(self, uncompressed_data: List[int]) -> Iterator[
+            List[int]]:
         if self.channels not in [3, 4]:
             raise NotImplementedError('Only RGB and ARGB data supported.')
         if len(uncompressed_data) != self.maxsize:
@@ -64,26 +68,28 @@ class Media:
         for i in range(self.channels):
             yield uncompressed_data[per_channel * i:per_channel * (i + 1)]
 
-    def decompress(self, data, ext='-?-'):
-        if not self.compressable:
-            return data
-        if ext == '-?-':
-            ext = RawData.determine_file_ext(data)
-        if ext == 'argb':
-            return PackBytes.unpack(data[4:])  # remove ARGB header
-        if ext is None or ext == 'rgb':  # RGB files dont have a magic number
-            if self.key == 'it32':
-                data = data[4:]
-            return PackBytes.unpack(data)
-        return data
+    def decompress(self, data: bytes, ext: Optional[str] = '-?-') -> Optional[
+            List[int]]:
+        ''' Returns None if media is not decompressable. '''
+        if self.compressable:
+            if ext == '-?-':
+                ext = RawData.determine_file_ext(data)
+            if ext == 'argb':
+                return PackBytes.unpack(data[4:])  # remove ARGB header
+            if ext is None or ext == 'rgb':  # RGB files dont have magic number
+                if self.key == 'it32':
+                    data = data[4:]
+                return PackBytes.unpack(data)
+        return None
 
-    def filename(self, *, key_only=False, size_only=False):
+    def filename(self, *, key_only: bool = False, size_only: bool = False) \
+            -> str:
         if key_only:
             if os.path.exists(__file__.upper()):  # check case senstive
                 if self.key in ['sb24', 'icsb']:
-                    return self.key + '-a'
+                    return self.key + '-a'  # type: ignore
                 elif self.key in ['SB24', 'icsB']:
-                    return self.key + '-b'
+                    return self.key + '-b'  # type: ignore
             return str(self.key)  # dont return directy, may be b''-str
         else:
             if self.is_type('icns'):
@@ -106,11 +112,11 @@ class Media:
                     suffix += '-mask{}b'.format(self.bits)
             return '{}x{}{}'.format(w, h, suffix)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<{}: {}, {}.{}>'.format(
-            type(self).__name__, self.key, self.filename(), self.types[0])
+            type(self).__name__, str(self.key), self.filename(), self.types[0])
 
-    def __str__(self):
+    def __str__(self) -> str:
         T = ''
         if self.size:
             T += '{}x{}, '.format(*self.size)
@@ -120,36 +126,36 @@ class Media:
         if self.desc:
             T += self.desc + ', '
         return '{}: {}macOS {}+'.format(
-            self.key, T, self.availability or '?')
+            str(self.key), T, self.availability or '?')
 
 
 _TYPES = {x.key: x for x in (
     # Read support for these:
-    Media('ICON', 'bin', 32, ch=1, bits=1, os=1.0, desc='icon'),
-    Media('ICN#', 'bin', 32, ch=2, bits=1, os=6.0, desc='iconmask'),
-    Media('icm#', 'bin', (16, 12), ch=2, bits=1, os=6.0, desc='iconmask'),
-    Media('icm4', 'bin', (16, 12), ch=1, bits=4, os=7.0, desc='icon'),
-    Media('icm8', 'bin', (16, 12), ch=1, bits=8, os=7.0, desc='icon'),
-    Media('ics#', 'bin', 16, ch=2, bits=1, os=6.0, desc='iconmask'),
-    Media('ics4', 'bin', 16, ch=1, bits=4, os=7.0, desc='icon'),
-    Media('ics8', 'bin', 16, ch=1, bits=8, os=7.0, desc='icon'),
-    Media('is32', 'rgb', 16, os=8.5),
-    Media('s8mk', 'bin', 16, ch=1, bits=8, os=8.5, desc='mask'),
-    Media('icl4', 'bin', 32, ch=1, bits=4, os=7.0, desc='icon'),
-    Media('icl8', 'bin', 32, ch=1, bits=8, os=7.0, desc='icon'),
-    Media('il32', 'rgb', 32, os=8.5),
-    Media('l8mk', 'bin', 32, ch=1, bits=8, os=8.5, desc='mask'),
-    Media('ich#', 'bin', 48, ch=2, bits=1, os=8.5, desc='iconmask'),
-    Media('ich4', 'bin', 48, ch=1, bits=4, os=8.5, desc='icon'),
-    Media('ich8', 'bin', 48, ch=1, bits=8, os=8.5, desc='icon'),
-    Media('ih32', 'rgb', 48, os=8.5),
-    Media('h8mk', 'bin', 48, ch=1, bits=8, os=8.5, desc='mask'),
-    Media('it32', 'rgb', 128, os=10.0),
-    Media('t8mk', 'bin', 128, ch=1, bits=8, os=10.0, desc='mask'),
+    Media('ICON', ['bin'], 32, ch=1, bits=1, os=1.0, desc='icon'),
+    Media('ICN#', ['bin'], 32, ch=2, bits=1, os=6.0, desc='iconmask'),
+    Media('icm#', ['bin'], (16, 12), ch=2, bits=1, os=6.0, desc='iconmask'),
+    Media('icm4', ['bin'], (16, 12), ch=1, bits=4, os=7.0, desc='icon'),
+    Media('icm8', ['bin'], (16, 12), ch=1, bits=8, os=7.0, desc='icon'),
+    Media('ics#', ['bin'], 16, ch=2, bits=1, os=6.0, desc='iconmask'),
+    Media('ics4', ['bin'], 16, ch=1, bits=4, os=7.0, desc='icon'),
+    Media('ics8', ['bin'], 16, ch=1, bits=8, os=7.0, desc='icon'),
+    Media('is32', ['rgb'], 16, os=8.5),
+    Media('s8mk', ['bin'], 16, ch=1, bits=8, os=8.5, desc='mask'),
+    Media('icl4', ['bin'], 32, ch=1, bits=4, os=7.0, desc='icon'),
+    Media('icl8', ['bin'], 32, ch=1, bits=8, os=7.0, desc='icon'),
+    Media('il32', ['rgb'], 32, os=8.5),
+    Media('l8mk', ['bin'], 32, ch=1, bits=8, os=8.5, desc='mask'),
+    Media('ich#', ['bin'], 48, ch=2, bits=1, os=8.5, desc='iconmask'),
+    Media('ich4', ['bin'], 48, ch=1, bits=4, os=8.5, desc='icon'),
+    Media('ich8', ['bin'], 48, ch=1, bits=8, os=8.5, desc='icon'),
+    Media('ih32', ['rgb'], 48, os=8.5),
+    Media('h8mk', ['bin'], 48, ch=1, bits=8, os=8.5, desc='mask'),
+    Media('it32', ['rgb'], 128, os=10.0),
+    Media('t8mk', ['bin'], 128, ch=1, bits=8, os=10.0, desc='mask'),
     # Write support for these:
     Media('icp4', ['png', 'jp2', 'rgb'], 16, os=10.7),
     Media('icp5', ['png', 'jp2', 'rgb'], 32, os=10.7),
-    Media('icp6', 'png', 64, os=10.7),
+    Media('icp6', ['png'], 64, os=10.7),
     Media('ic07', ['png', 'jp2'], 128, os=10.7),
     Media('ic08', ['png', 'jp2'], 256, os=10.5),
     Media('ic09', ['png', 'jp2'], 512, os=10.5),
@@ -165,36 +171,37 @@ _TYPES = {x.key: x for x in (
     Media('sb24', ['png', 'jp2'], 24),
     Media('SB24', ['png', 'jp2'], 48, desc='24x24@2x'),
     # ICNS media files
-    Media('sbtp', 'icns', desc='template'),
-    Media('slct', 'icns', desc='selected'),
-    Media(b'\xFD\xD9\x2F\xA8', 'icns', os=10.14, desc='dark'),
+    Media('sbtp', ['icns'], desc='template'),
+    Media('slct', ['icns'], desc='selected'),
+    Media(b'\xFD\xD9\x2F\xA8', ['icns'], os=10.14, desc='dark'),
     # Meta types:
-    Media('TOC ', 'bin', os=10.7, desc='Table of Contents'),
-    Media('icnV', 'bin', desc='4-byte Icon Composer.app bundle version'),
-    Media('name', 'bin', desc='Unknown'),
-    Media('info', 'plist', desc='Info binary plist'),
-)}
+    Media('TOC ', ['bin'], os=10.7, desc='Table of Contents'),
+    Media('icnV', ['bin'], desc='4-byte Icon Composer.app bundle version'),
+    Media('name', ['bin'], desc='Unknown'),
+    Media('info', ['plist'], desc='Info binary plist'),
+)}  # type: Dict[Media.KeyT, Media]
 
 
-def enum_img_mask_pairs(available_keys):
+def enum_img_mask_pairs(available_keys: Iterable[Media.KeyT]) -> Iterator[
+        Tuple[Optional[str], Optional[str]]]:
     for mask_k, *imgs in [  # list probably never changes, ARGB FTW
         ('s8mk', 'is32', 'ics8', 'ics4', 'icp4'),
         ('l8mk', 'il32', 'icl8', 'icl4', 'icp5'),
         ('h8mk', 'ih32', 'ich8', 'ich4'),
         ('t8mk', 'it32'),
     ]:
-        if mask_k not in available_keys:
-            mask_k = None
+        mk = mask_k if mask_k in available_keys else None
         any_img = False
         for img_k in imgs:
             if img_k in available_keys:
                 any_img = True
-                yield img_k, mask_k
-        if mask_k and not any_img:
-            yield None, mask_k
+                yield img_k, mk
+        if mk and not any_img:
+            yield None, mk
 
 
-def enum_png_convertable(available_keys):
+def enum_png_convertable(available_keys: Iterable[Media.KeyT]) -> Iterator[
+        Tuple[Media.KeyT, Optional[Media.KeyT]]]:
     ''' Yield (image-key, mask-key or None) '''
     for img in _TYPES.values():
         if img.key not in available_keys:
@@ -212,22 +219,21 @@ def enum_png_convertable(available_keys):
             yield img.key, mask_key
 
 
-def get(key):
+def get(key: Media.KeyT) -> Media:
     try:
         return _TYPES[key]
     except KeyError:
         pass
-    raise NotImplementedError('Unsupported icns type "{}"'.format(key))
+    raise NotImplementedError('Unsupported icns type "' + str(key) + '"')
 
 
-def match_maxsize(maxsize, typ):
-    for x in _TYPES.values():
-        if x.is_type(typ) and x.maxsize == maxsize:
-            return x  # TODO: handle cases with multiple options? eg: is32 icp4
-    return None
+def match_maxsize(total: int, typ: str) -> Media:
+    assert(typ == 'argb' or typ == 'rgb')
+    ret = [x for x in _TYPES.values() if x.is_type(typ) and x.maxsize == total]
+    return ret[0]  # TODO: handle cases with multiple options? eg: is32 icp4
 
 
-def guess(data, filename=None):
+def guess(data: bytes, filename: Optional[str] = None) -> Media:
     '''
     Guess icns media type by analyzing the raw data + file naming convention.
     Use:

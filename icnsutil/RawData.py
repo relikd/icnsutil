@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import struct  # pack, unpack
+from typing import Union, Optional, Tuple, Iterator, BinaryIO
 from . import IcnsType, PackBytes
 
 
@@ -7,7 +8,7 @@ class ParserError(Exception):
     pass
 
 
-def determine_file_ext(data):
+def determine_file_ext(data: bytes) -> Optional[str]:
     '''
     Data should be at least 8 bytes long.
     Returns one of: png, argb, plist, jp2, icns, None
@@ -28,12 +29,14 @@ def determine_file_ext(data):
     return None
 
 
-def determine_image_size(data, ext=None):
+def determine_image_size(data: bytes, ext: Optional[str] = None) \
+        -> Optional[Tuple[int, int]]:
     ''' Supports PNG, ARGB, and Jpeg 2000 image data. '''
     if not ext:
         ext = determine_file_ext(data)
     if ext == 'png':
-        return struct.unpack('>II', data[16:24])
+        w, h = struct.unpack('>II', data[16:24])
+        return w, h
     elif ext == 'argb':
         total = PackBytes.get_size(data[4:])  # without ARGB header
         return IcnsType.match_maxsize(total, 'argb').size
@@ -43,7 +46,8 @@ def determine_image_size(data, ext=None):
         return IcnsType.match_maxsize(PackBytes.get_size(data), 'rgb').size
     elif ext == 'jp2':
         if data[:4] == b'\xFF\x4F\xFF\x51':
-            return struct.unpack('>II', data[8:16])
+            w, h = struct.unpack('>II', data[8:16])
+            return w, h
         len_ftype = struct.unpack('>I', data[12:16])[0]
         # file header + type box + header box (super box) + image header box
         offset = 12 + len_ftype + 8 + 8
@@ -52,7 +56,7 @@ def determine_image_size(data, ext=None):
     return None  # icns does not support other image types except binary
 
 
-def is_icns_without_header(data):
+def is_icns_without_header(data: bytes) -> bool:
     ''' Returns True even if icns header is missing. '''
     offset = 0
     for i in range(2):  # test n keys if they exist
@@ -69,32 +73,33 @@ def is_icns_without_header(data):
     return True
 
 
-def icns_header_read(data):
+def icns_header_read(data: bytes) -> Tuple[IcnsType.Media.KeyT, int]:
     ''' Returns icns type name and data length (incl. +8 for header) '''
-    assert(type(data) == bytes)
+    assert(isinstance(data, bytes))
     if len(data) != 8:
-        return None, 0
+        return '', 0
+    length = struct.unpack('>I', data[4:])[0]
     try:
-        name = data[:4].decode('utf8')
+        return data[:4].decode('utf8'), length
     except UnicodeDecodeError:
-        name = data[:4]  # Fallback to bytes-string key
-    return name, struct.unpack('>I', data[4:])[0]
+        return data[:4], length  # Fallback to bytes-string key
 
 
-def icns_header_write_data(fp, key, data):
+def icns_header_write_data(fp: BinaryIO, key: IcnsType.Media.KeyT,
+                           data: bytes) -> None:
     ''' Calculates length from data. '''
-    fp.write(key.encode('utf8') if type(key) == str else key)
+    fp.write(key.encode('utf8') if isinstance(key, str) else key)
     fp.write(struct.pack('>I', len(data) + 8))
     fp.write(data)
 
 
-def icns_header_w_len(key, length):
+def icns_header_w_len(key: IcnsType.Media.KeyT, length: int) -> bytes:
     ''' Adds +8 to length. '''
-    name = key.encode('utf8') if type(key) == str else key
+    name = key.encode('utf8') if isinstance(key, str) else key
     return name + struct.pack('>I', length + 8)
 
 
-def parse_icns_file(fname):
+def parse_icns_file(fname: str) -> Iterator[Tuple[IcnsType.Media.KeyT, bytes]]:
     '''
     Parse file and yield media entries: (key, data)
     :raises:

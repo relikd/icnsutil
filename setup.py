@@ -23,7 +23,7 @@ setup(
     },
     long_description_content_type="text/markdown",
     long_description=longdesc,
-    python_requires='>=3.2',
+    python_requires='>=3.5',
     keywords=[
         'icns',
         'icon',

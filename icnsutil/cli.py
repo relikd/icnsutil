@@ -4,13 +4,14 @@ Export existing icns files or compose new ones.
 '''
 import os  # path, makedirs
 import sys  # path, stderr
+from typing import Iterator, Optional
 from argparse import ArgumentParser, ArgumentTypeError, RawTextHelpFormatter
 if __name__ == '__main__':
     sys.path[0] = os.path.dirname(sys.path[0])
 from icnsutil import __version__, IcnsFile
 
 
-def cli_extract(args):
+def cli_extract(args) -> None:
     ''' Read and extract contents of icns file(s). '''
     multiple = len(args.file) > 1 or '-' in args.file
     for i, fname in enumerate(enum_with_stdin(args.file)):
@@ -20,13 +21,13 @@ def cli_extract(args):
             out = os.path.join(out, str(i))
             os.makedirs(out, exist_ok=True)
 
-        pred = 'png' if args.png_only else None
         IcnsFile(fname).export(
-            out, allowed_ext=pred, recursive=args.recursive,
-            convert_png=args.convert, key_suffix=args.keys)
+            out, allowed_ext='png' if args.png_only else '*',
+            recursive=args.recursive, convert_png=args.convert,
+            key_suffix=args.keys)
 
 
-def cli_compose(args):
+def cli_compose(args) -> None:
     ''' Create new icns file from provided image files. '''
     dest = args.target
     if not os.path.splitext(dest)[1]:
@@ -35,24 +36,24 @@ def cli_compose(args):
         print(
             'File "{}" already exists. Force overwrite with -f.'.format(dest),
             file=sys.stderr)
-        return 1
+        return
     img = IcnsFile()
     for x in enum_with_stdin(args.source):
         img.add_media(file=x)
     img.write(dest, toc=not args.no_toc)
 
 
-def cli_print(args):
+def cli_print(args) -> None:
     ''' Print contents of icns file(s). '''
     for fname in enum_with_stdin(args.file):
         print('File:', fname)
         print(IcnsFile.description(fname, verbose=args.verbose, indent=2))
 
 
-def cli_verify(args):
+def cli_verify(args) -> None:
     ''' Test if icns file is valid. '''
     for fname in enum_with_stdin(args.file):
-        is_valid = True
+        is_valid = True  # type: Optional[bool]
         if not args.quiet:
             print('File:', fname)
             is_valid = None
@@ -65,7 +66,7 @@ def cli_verify(args):
             print('OK')
 
 
-def enum_with_stdin(file_arg):
+def enum_with_stdin(file_arg: list) -> Iterator[str]:
     for x in file_arg:
         if x == '-':
             for line in sys.stdin.readlines():
@@ -74,13 +75,13 @@ def enum_with_stdin(file_arg):
             yield x
 
 
-def main():
+def main() -> None:
     class PathExist:
-        def __init__(self, kind=None, stdin=False):
+        def __init__(self, kind: Optional[str] = None, stdin: bool = False):
             self.kind = kind
             self.stdin = stdin
 
-        def __call__(self, path):
+        def __call__(self, path: str) -> str:
             if self.stdin and path == '-':
                 return '-'
             if not os.path.exists(path) or \

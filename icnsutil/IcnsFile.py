@@ -2,13 +2,14 @@
 import os  # path, makedirs, remove
 import struct  # unpack float in _description()
 from sys import stderr
+from typing import Iterator, Iterable, Tuple, Optional, List, Dict, Union
 from . import RawData, IcnsType
 from .ArgbImage import ArgbImage
 
 
 class IcnsFile:
     @staticmethod
-    def verify(fname):
+    def verify(fname: str) -> Iterator[str]:
         '''
         Yields an error message for each issue.
         You can check for validity with `is_invalid = any(obj.verify())`
@@ -22,7 +23,7 @@ class IcnsFile:
                 try:
                     iType = IcnsType.get(key)
                 except NotImplementedError:
-                    yield 'Unsupported icns type: {}'.format(key)
+                    yield 'Unsupported icns type: ' + str(key)
                     continue
 
                 ext = RawData.determine_file_ext(data)
@@ -32,7 +33,7 @@ class IcnsFile:
                 # Check whether stored type is an expected file format
                 if not (iType.is_type(ext) if ext else iType.is_binary()):
                     yield 'Unexpected type for key {}: {} != {}'.format(
-                        key, ext or 'binary', iType.types)
+                        str(key), ext or 'binary', iType.types)
 
                 if ext in ['png', 'jp2', 'icns', 'plist']:
                     continue
@@ -40,16 +41,16 @@ class IcnsFile:
                 # Check whether uncompressed size is equal to expected maxsize
                 if key == 'it32' and data[:4] != b'\x00\x00\x00\x00':
                     # TODO: check whether other it32 headers exist
-                    yield 'Unexpected it32 data header: {}'.format(data[:4])
-                data = iType.decompress(data, ext)  # ignores non-compressable
+                    yield 'Unexpected it32 data header: ' + str(data[:4])
+                udata = iType.decompress(data, ext) or data
 
                 # Check expected uncompressed maxsize
-                if iType.maxsize and len(data) != iType.maxsize:
+                if iType.maxsize and len(udata) != iType.maxsize:
                     yield 'Invalid data length for {}: {} != {}'.format(
-                        key, len(data), iType.maxsize)
+                        str(key), len(udata), iType.maxsize)
         # if file is not an icns file
         except RawData.ParserError as e:
-            yield e
+            yield str(e)
             return
 
         # Check total size after enum. Enum may raise exception and break early
@@ -76,12 +77,14 @@ class IcnsFile:
                     x, y)
 
     @staticmethod
-    def description(fname, *, verbose=False, indent=0):
+    def description(fname: str, *, verbose: bool = False, indent: int = 0) -> \
+            str:
         return IcnsFile._description(
             RawData.parse_icns_file(fname), verbose=verbose, indent=indent)
 
     @staticmethod
-    def _description(enumerator, *, verbose=False, indent=0):
+    def _description(enumerator: Iterable[Tuple[IcnsType.Media.KeyT, bytes]],
+                     *, verbose: bool = False, indent: int = 0) -> str:
         ''' Expects an enumerator with (key, size, data) '''
         txt = ''
         offset = 8  # already with icns header
@@ -89,7 +92,7 @@ class IcnsFile:
             for key, data in enumerator:
                 size = len(data)
                 txt += os.linesep + ' ' * indent
-                txt += '{}: {} bytes'.format(key, size)
+                txt += '{}: {} bytes'.format(str(key), size)
                 if verbose:
                     txt += ', offset: {}'.format(offset)
                     offset += size + 8
@@ -112,9 +115,9 @@ class IcnsFile:
         except RawData.ParserError as e:
             return ' ' * indent + str(e) + os.linesep
 
-    def __init__(self, file=None):
+    def __init__(self, file: str = None) -> None:
         ''' Read .icns file and load bundled media files into memory. '''
-        self.media = {}
+        self.media = {}  # type: Dict[IcnsType.Media.KeyT, bytes]
         self.infile = file
         if not file:  # create empty image
             return
@@ -124,29 +127,31 @@ class IcnsFile:
                 IcnsType.get(key)
             except NotImplementedError:
                 print('Warning: unknown media type: {}, {} bytes, "{}"'.format(
-                    key, len(data), file), file=stderr)
+                    str(key), len(data), file), file=stderr)
 
-    def add_media(self, key=None, *, file=None, data=None, force=False):
+    def add_media(self, key: Optional[IcnsType.Media.KeyT] = None, *,
+                  file: Optional[str] = None, data: Optional[bytes] = None,
+                  force: bool = False) -> None:
         '''
         If you provide both, data and file, data takes precedence.
         However, the filename is still used for type-guessing.
         - Declare retina images with suffix "@2x.png".
         - Declare icns file with suffix "-dark", "-template", or "-selected"
         '''
-        assert(not key or len(key) == 4)  # did you miss file= or data=?
         if file and not data:
             with open(file, 'rb') as fp:
                 data = fp.read()
-
+        if not data:
+            raise AttributeError('Did you miss file= or data= attribute?')
         if not key:  # Determine ICNS type
             key = IcnsType.guess(data, file).key
         # Check if type is unique
         if not force and key in self.media.keys():
-            raise KeyError(
-                'Image with identical key "{}". File: {}'.format(key, file))
+            raise KeyError('Image with identical key "{}". File: {}'.format(
+                str(key), file))
         self.media[key] = data
 
-    def write(self, fname, *, toc=True):
+    def write(self, fname: str, *, toc: bool = True) -> None:
         ''' Create a new ICNS file from stored media. '''
         # Rebuild TOC to ensure soundness
         order = self._make_toc(enabled=toc)
@@ -157,8 +162,11 @@ class IcnsFile:
             for key in order:
                 RawData.icns_header_write_data(fp, key, self.media[key])
 
-    def export(self, outdir=None, *, allowed_ext=None, key_suffix=False,
-               convert_png=False, decompress=False, recursive=False):
+    def export(self, outdir: Optional[str] = None, *,
+               allowed_ext: str = '*', key_suffix: bool = False,
+               convert_png: bool = False, decompress: bool = False,
+               recursive: bool = False) -> Dict[IcnsType.Media.KeyT,
+                                                Union[str, Dict]]:
         '''
         Write all bundled media files to output directory.
 
@@ -177,52 +185,52 @@ class IcnsFile:
         elif not os.path.isdir(outdir):
             raise OSError('"{}" is not a directory. Abort.'.format(outdir))
 
-        exported_files = {'_': self.infile}
+        export_files = {}  # type: Dict[IcnsType.Media.KeyT, Union[str, Dict]]
+        if self.infile:
+            export_files['_'] = self.infile
         keys = list(self.media.keys())
         # Convert to PNG
         if convert_png:
-            # keys = [x for x in keys if x not in []]
             for imgk, maskk in IcnsType.enum_png_convertable(keys):
                 fname = self._export_to_png(outdir, imgk, maskk, key_suffix)
                 if not fname:
                     continue
-                exported_files[imgk] = fname
+                export_files[imgk] = fname
                 if maskk:
-                    exported_files[maskk] = fname
+                    export_files[maskk] = fname
                     if maskk in keys:
                         keys.remove(maskk)
                 keys.remove(imgk)
 
         # prepare filter
-        if type(allowed_ext) == str:
-            allowed_ext = [allowed_ext]
+        allowed = [] if allowed_ext == '*' else allowed_ext.split(',')
         if recursive:
-            cleanup = allowed_ext and 'icns' not in allowed_ext
+            cleanup = allowed and 'icns' not in allowed
             if cleanup:
-                allowed_ext.append('icns')
+                allowed.append('icns')
 
         # Export remaining
         for key in keys:
-            fname = self._export_single(outdir, key, key_suffix, decompress,
-                                        allowed_ext)
+            fname = self._export_single(outdir, key, key_suffix,
+                                        decompress, allowed)
             if fname:
-                exported_files[key] = fname
+                export_files[key] = fname
 
         # repeat for all icns
         if recursive:
-            for key, fname in exported_files.items():
-                if key == '_' or not fname.endswith('.icns'):
+            for old_key, old_name in export_files.items():
+                assert(isinstance(old_name, str))
+                if not old_name.endswith('.icns') or old_key == '_':
                     continue
-                prev_fname = exported_files[key]
-                exported_files[key] = IcnsFile(fname).export(
+                export_files[old_key] = IcnsFile(old_name).export(
                     allowed_ext=allowed_ext, key_suffix=key_suffix,
                     convert_png=convert_png, decompress=decompress,
                     recursive=True)
                 if cleanup:
-                    os.remove(prev_fname)
-        return exported_files
+                    os.remove(old_name)
+        return export_files
 
-    def _make_toc(self, *, enabled):
+    def _make_toc(self, *, enabled: bool) -> List[IcnsType.Media.KeyT]:
         # Rebuild TOC to ensure soundness
         if 'TOC ' in self.media.keys():
             del(self.media['TOC '])
@@ -238,7 +246,9 @@ class IcnsFile:
 
         return order
 
-    def _export_single(self, outdir, key, key_suffix, decompress, allowed_ext):
+    def _export_single(self, outdir: str, key: IcnsType.Media.KeyT,
+                       key_suffix: bool, decompress: bool,
+                       allowed: List[str]) -> Optional[str]:
         ''' You must ensure that keys exist in self.media '''
         data = self.media[key]
         ext = RawData.determine_file_ext(data)
@@ -249,7 +259,7 @@ class IcnsFile:
             iType = IcnsType.get(key)
             fname = iType.filename(key_only=key_suffix)
             if decompress:
-                data = iType.decompress(data, ext)  # ignores non-compressable
+                data = iType.decompress(data, ext) or data  # type: ignore
             if not ext:  # overwrite ext after (decompress requires None)
                 ext = 'rgb' if iType.compressable else 'bin'
         except NotImplementedError:  # If key unkown, export anyway
@@ -257,14 +267,16 @@ class IcnsFile:
             if not ext:
                 ext = 'unknown'
 
-        if allowed_ext and ext not in allowed_ext:
+        if allowed and ext not in allowed:
             return None
         fname = os.path.join(outdir, fname + '.' + ext)
         with open(fname, 'wb') as fp:
             fp.write(data)
         return fname
 
-    def _export_to_png(self, outdir, img_key, mask_key, key_suffix):
+    def _export_to_png(self, outdir: str, img_key: IcnsType.Media.KeyT,
+                       mask_key: Optional[IcnsType.Media.KeyT],
+                       key_suffix: bool) -> Optional[str]:
         ''' You must ensure key and mask_key exists! '''
         data = self.media[img_key]
         if RawData.determine_file_ext(data) not in ['argb', None]:
@@ -279,11 +291,11 @@ class IcnsFile:
             ArgbImage(data=data, mask=mask_data).write_png(fname)
         return fname
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         lst = ', '.join(str(k) for k in self.media.keys())
         return '<{}: file={}, [{}]>'.format(
             type(self).__name__, self.infile, lst)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return 'File: ' + (self.infile or '-mem-') + os.linesep \
             + IcnsFile._description(self.media.items(), indent=2)

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from typing import Union, Iterator, Optional
 from . import IcnsType, PackBytes
 try:
     from PIL import Image
@@ -11,7 +12,8 @@ class ArgbImage:
     __slots__ = ['a', 'r', 'g', 'b', 'size', 'channels']
 
     @classmethod
-    def from_mono(cls, data, iType):
+    def from_mono(cls, data: bytes, iType: IcnsType.Media) -> 'ArgbImage':
+        ''' Load monochrome 1-bit image with or without mask. '''
         assert(iType.bits == 1)
         img = []
         for byte in data:
@@ -28,11 +30,15 @@ class ArgbImage:
         self.r, self.g, self.b = img, img, img
         return self
 
-    def __init__(self, *, data=None, file=None, mask=None):
+    def __init__(self, *, data: Optional[bytes] = None,
+                 file: Optional[str] = None,
+                 mask: Union[bytes, str, None] = None) -> None:
         '''
         Provide either a filename or raw binary data.
         - mask : Optional, may be either binary data or filename
         '''
+        self.size = (0, 0)
+        self.channels = 0
         if file:
             self.load_file(file)
         elif data:
@@ -40,12 +46,12 @@ class ArgbImage:
         else:
             raise AttributeError('Neither data nor file provided.')
         if mask:
-            if type(mask) == bytes:
+            if isinstance(mask, bytes):
                 self.load_mask(data=mask)
             else:
                 self.load_mask(file=mask)
 
-    def load_file(self, fname):
+    def load_file(self, fname: str) -> None:
         with open(fname, 'rb') as fp:
             if fp.read(4) == b'\x89PNG':
                 self._load_png(fname)
@@ -60,49 +66,50 @@ class ArgbImage:
             tmp = e  # ignore previous exception to create a new one
         raise type(tmp)('{} File: "{}"'.format(str(tmp), fname))
 
-    def load_data(self, data):
+    def load_data(self, data: bytes) -> None:
         ''' Has support for ARGB and RGB-channels files. '''
         is_argb = data[:4] == b'ARGB'
         if is_argb or data[:4] == b'\x00\x00\x00\x00':
             data = data[4:]  # remove ARGB and it32 header
 
-        data = PackBytes.unpack(data)
-        iType = IcnsType.match_maxsize(len(data), 'argb' if is_argb else 'rgb')
-        if not iType:
-            raise ValueError('No (A)RGB image data. Could not determine size.')
+        idat = PackBytes.unpack(data)
+        iType = IcnsType.match_maxsize(len(idat), 'argb' if is_argb else 'rgb')
 
         self.size = iType.size
-        self.channels = iType.channels
-        self.a, self.r, self.g, self.b = iType.split_channels(data)
+        self.channels = iType.channels or 0
+        self.a, self.r, self.g, self.b = iType.split_channels(idat)
 
-    def load_mask(self, *, file=None, data=None):
+    def load_mask(self, *, file: Optional[str] = None,
+                  data: Optional[bytes] = None) -> None:
         ''' Data must be uncompressed and same length as a single channel! '''
         if file:
             with open(file, 'rb') as fp:
                 data = fp.read()
+        else:
+            assert(isinstance(data, bytes))
         if not data:
             raise AttributeError('Neither data nor file provided.')
 
         assert(len(data) == len(self.r))
-        self.a = data
+        self.a = list(data)
 
-    def mask_data(self, bits=8, *, compress=False):
+    def mask_data(self, bits: int = 8, *, compress: bool = False) -> bytes:
         if bits == 8:  # default for rgb and argb
             return PackBytes.pack(self.a) if compress else bytes(self.a)
         return bytes(PackBytes.msb_stream(self.a, bits=bits))
 
-    def rgb_data(self, *, compress=True):
+    def rgb_data(self, *, compress: bool = True) -> bytes:
         return b''.join(self._raw_rgb_channels(compress=compress))
 
-    def argb_data(self, *, compress=True):
+    def argb_data(self, *, compress: bool = True) -> bytes:
         return b'ARGB' + self.mask_data(compress=compress) + \
             b''.join(self._raw_rgb_channels(compress=compress))
 
-    def _raw_rgb_channels(self, *, compress=True):
+    def _raw_rgb_channels(self, *, compress: bool = True) -> Iterator[bytes]:
         for x in (self.r, self.g, self.b):
-            yield PackBytes.pack(x) if compress else bytes(x)
+            yield (PackBytes.pack(x) if compress else bytes(x))
 
-    def _load_png(self, fname):
+    def _load_png(self, fname: str) -> None:
         if not PIL_ENABLED:
             raise ImportError('Install Pillow to support PNG conversion.')
         img = Image.open(fname, mode='r')
@@ -126,7 +133,7 @@ class ArgbImage:
                 self.g.append(g)
                 self.b.append(b)
 
-    def write_png(self, fname):
+    def write_png(self, fname: str) -> None:
         if not PIL_ENABLED:
             raise ImportError('Install Pillow to support PNG conversion.')
         img = Image.new(mode='RGBA', size=self.size)
@@ -138,7 +145,7 @@ class ArgbImage:
                     (x, y), (self.r[i], self.g[i], self.b[i], self.a[i]))
         img.save(fname)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         typ = ['', 'Mono', 'Mono with Mask', 'RGB', 'RGBA'][self.channels]
         return '<{}: {}x{} {}>'.format(
             type(self).__name__, self.size[0], self.size[1], typ)
