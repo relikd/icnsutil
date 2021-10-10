@@ -254,12 +254,16 @@ def guess(data: bytes, filename: Optional[str] = None) -> Media:
     # Guess by image size and retina flag
     size = RawData.determine_image_size(data, ext) if ext else None
     retina = bname.lower().endswith('@2x') if filename else False
+    if size == (1024, 1024):
+        retina = True  # stupid double usage of ic10
+
     # Icns specific names
     desc = None
     if ext == 'icns' and filename:
         for candidate in ['template', 'selected', 'dark']:
             if filename.endswith(candidate + '.icns'):
                 desc = candidate
+                break
 
     choices = []
     for x in _TYPES.values():
