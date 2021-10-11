@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from typing import Union, Iterator, Optional
 from math import sqrt
-from . import IcnsType, PackBytes
+from . import IcnsType, PackBytes, RawData
 try:
     from PIL import Image
     PIL_ENABLED = True
@@ -54,7 +54,7 @@ class ArgbImage:
 
     def load_file(self, fname: str) -> None:
         with open(fname, 'rb') as fp:
-            if fp.read(4) == b'\x89PNG':
+            if RawData.determine_file_ext(fp.read(8)) in ['png', 'jp2']:
                 self._load_png(fname)
                 return
             # else
