@@ -41,7 +41,7 @@ def determine_image_size(data: bytes, ext: Optional[str] = None) \
         total = PackBytes.get_size(data[4:])  # without ARGB header
         return IcnsType.match_maxsize(total, 'argb').size
     elif ext == 'rgb':
-        if data[:4] == '\x00\x00\x00\x00':
+        if data[:4] == b'\x00\x00\x00\x00':
             data = data[4:]  # without it32 header
         return IcnsType.match_maxsize(PackBytes.get_size(data), 'rgb').size
     elif ext == 'jp2':
