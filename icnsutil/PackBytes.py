@@ -22,15 +22,18 @@ def pack(data: List[int]) -> bytes:
             flush_buf()
             # repeating
             c = 3
-            while (i + c) < len(data) and data[i + c] == x:
+            while (i + c) < end and data[i + c] == x:
                 c += 1
             i += c
             while c > 130:  # max number of copies encodable in compression
                 ret.append(0xFF)
                 ret.append(x)
                 c -= 130
-            ret.append(c + 0x7D)  # 0x80 - 3
-            ret.append(x)
+            if c > 2:
+                ret.append(c + 0x7D)  # 0x80 - 3
+                ret.append(x)
+            else:
+                i -= c
         else:
             buf.append(x)
             if len(buf) > 127:

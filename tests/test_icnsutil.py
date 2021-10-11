@@ -376,6 +376,10 @@ class TestPackBytes(unittest.TestCase):
         self.assertEqual(d, b'\x01\x01\x02\xff\x03\x81\x03\x01\x04\x05')
         d = PackBytes.pack(b'\x00' * 223 + b'\x01' * 153)
         self.assertEqual(d, b'\xff\x00\xda\x00\xff\x01\x94\x01')
+        d = PackBytes.pack(b'\x13' * 131)
+        self.assertEqual(d, b'\xff\x13\x00\x13')
+        d = PackBytes.pack(b'\x13' * 132)
+        self.assertEqual(d, b'\xff\x13\x01\x13\x13')
 
     def test_unpack(self):
         d = PackBytes.unpack(b'\xff\x00\xff\x00\xff\x00\xf9\x00')
@@ -386,6 +390,8 @@ class TestPackBytes(unittest.TestCase):
         self.assertListEqual(d, [1, 2] + [3] * 134 + [4, 5])
         d = PackBytes.unpack(b'\xff\x00\xda\x00\xff\x01\x94\x01')
         self.assertListEqual(d, [0] * 223 + [1] * 153)
+        d = PackBytes.unpack(b'\xff\x13\x00\x13')
+        self.assertListEqual(d, [19] * 131)
 
     def test_get_size(self):
         for d in [b'\xff\x00\xff\x00\xff\x00\xf9\x00',
