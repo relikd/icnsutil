@@ -23,6 +23,7 @@ positional arguments:
     compose (c)   Create new icns file from provided image files.
     print (p)     Print contents of icns file(s).
     test (t)      Test if icns file is valid.
+    convert (img) Convert images between PNG, ARGB, or RGB + alpha mask.
 ```
 
 
@@ -40,6 +41,13 @@ icnsutil p ExistingIcon.icns
 
 # verify valid format
 icnsutil t ExistingIcon.icns
+
+# convert image
+icnsutil img 1024.png 512@2x.jp2
+# or reuse original filename
+icnsutil img argb 16x16.png
+icnsutil img rgb 32.png
+icnsutil img png 16.rgb 16.mask
 ```
 
 
@@ -80,10 +88,10 @@ pip install Pillow
 import icnsutil
 
 # Convert from ARGB to PNG
-icnsutil.ArgbImage('16x16.argb').write_png('16x16.png')
+icnsutil.ArgbImage(file='16x16.argb').write_png('16x16.png')
 
 # Convert from PNG to 24-bit RGB
-img = icnsutil.ArgbImage('32x32.png')
+img = icnsutil.ArgbImage(file='32x32.png')
 with open('32x32.rgb', 'wb') as fp:
     fp.write(img.rgb_data())
 with open('32x32.mask', 'wb') as fp:
