@@ -112,26 +112,18 @@ class ArgbImage:
     def _load_png(self, fname: str) -> None:
         if not PIL_ENABLED:
             raise ImportError('Install Pillow to support PNG conversion.')
-        img = Image.open(fname, mode='r')
+        img = Image.open(fname, mode='r').convert('RGBA')
         self.size = img.size
         self.channels = 4
         self.a = []
         self.r = []
         self.g = []
         self.b = []
-        w, h = img.size
-        for y in range(h):
-            for x in range(w):
-                px = img.getpixel((x, y))
-                if type(px) == int:
-                    px = (px, px, px)  # convert mono to rgb
-                if len(px) == 3:
-                    px = px + (0xFF,)  # convert rgb to rgba
-                r, g, b, a = px
-                self.a.append(a)
-                self.r.append(r)
-                self.g.append(g)
-                self.b.append(b)
+        for r, g, b, a in img.getdata():
+            self.a.append(a)
+            self.r.append(r)
+            self.g.append(g)
+            self.b.append(b)
 
     def write_png(self, fname: str) -> None:
         if not PIL_ENABLED:
