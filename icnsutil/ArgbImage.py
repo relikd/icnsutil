@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from typing import Union, Iterator, Optional
+from math import sqrt
 from . import IcnsType, PackBytes
 try:
     from PIL import Image
@@ -72,12 +73,23 @@ class ArgbImage:
         if is_argb or data[:4] == b'\x00\x00\x00\x00':
             data = data[4:]  # remove ARGB and it32 header
 
-        idat = PackBytes.unpack(data)
-        iType = IcnsType.match_maxsize(len(idat), 'argb' if is_argb else 'rgb')
+        uncompressed_data = PackBytes.unpack(data)
 
-        self.size = iType.size
-        self.channels = iType.channels or 0
-        self.a, self.r, self.g, self.b = iType.split_channels(idat)
+        self.channels = 4 if is_argb else 3
+        per_channel = len(uncompressed_data) // self.channels
+        w = sqrt(per_channel)
+        if w != int(w):
+            raise NotImplementedError(
+                'Could not determine square image size. Or unknown type.')
+        self.size = (int(w), int(w))
+        if self.channels == 3:
+            self.a = [255] * per_channel  # opaque alpha channel for rgb
+        else:
+            self.a = uncompressed_data[:per_channel]
+        i = 1 if is_argb else 0
+        self.r = uncompressed_data[(i + 0) * per_channel:(i + 1) * per_channel]
+        self.g = uncompressed_data[(i + 1) * per_channel:(i + 2) * per_channel]
+        self.b = uncompressed_data[(i + 2) * per_channel:(i + 3) * per_channel]
 
     def load_mask(self, *, file: Optional[str] = None,
                   data: Optional[bytes] = None) -> None:
@@ -99,15 +111,12 @@ class ArgbImage:
         return bytes(PackBytes.msb_stream(self.a, bits=bits))
 
     def rgb_data(self, *, compress: bool = True) -> bytes:
-        return b''.join(self._raw_rgb_channels(compress=compress))
+        return b''.join(PackBytes.pack(x) if compress else bytes(x)
+                        for x in (self.r, self.g, self.b))
 
     def argb_data(self, *, compress: bool = True) -> bytes:
-        return b'ARGB' + self.mask_data(compress=compress) + \
-            b''.join(self._raw_rgb_channels(compress=compress))
-
-    def _raw_rgb_channels(self, *, compress: bool = True) -> Iterator[bytes]:
-        for x in (self.r, self.g, self.b):
-            yield (PackBytes.pack(x) if compress else bytes(x))
+        return b'ARGB' + self.mask_data(compress=compress) \
+                       + self.rgb_data(compress=compress)
 
     def _load_png(self, fname: str) -> None:
         if not PIL_ENABLED:

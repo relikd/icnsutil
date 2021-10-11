@@ -54,20 +54,6 @@ class Media:
             return self.desc  # guaranteed to be icon, mask, or iconmask
         return self.types[-1]
 
-    def split_channels(self, uncompressed_data: List[int]) -> Iterator[
-            List[int]]:
-        if self.channels not in [3, 4]:
-            raise NotImplementedError('Only RGB and ARGB data supported.')
-        if len(uncompressed_data) != self.maxsize:
-            raise ValueError(
-                'Data does not match expected uncompressed length. '
-                '{} != {}'.format(len(uncompressed_data), self.maxsize))
-        per_channel = self.maxsize // self.channels
-        if self.channels == 3:
-            yield [255] * per_channel  # opaque alpha channel for rgb
-        for i in range(self.channels):
-            yield uncompressed_data[per_channel * i:per_channel * (i + 1)]
-
     def decompress(self, data: bytes, ext: Optional[str] = '-?-') -> Optional[
             List[int]]:
         ''' Returns None if media is not decompressable. '''
@@ -230,7 +216,7 @@ def get(key: Media.KeyT) -> Media:
 def match_maxsize(total: int, typ: str) -> Media:
     assert(typ == 'argb' or typ == 'rgb')
     ret = [x for x in _TYPES.values() if x.is_type(typ) and x.maxsize == total]
-    return ret[0]  # TODO: handle cases with multiple options? eg: is32 icp4
+    return _best_option(ret, typ)
 
 
 def guess(data: bytes, filename: Optional[str] = None) -> Media:
@@ -247,38 +233,64 @@ def guess(data: bytes, filename: Optional[str] = None) -> Media:
         if bname in _TYPES:
             return _TYPES[bname]
 
-    ext = RawData.determine_file_ext(data)
-    if not ext and filename and filename.endswith('.rgb'):
-        ext = 'rgb'
-
-    # Guess by image size and retina flag
-    size = RawData.determine_image_size(data, ext) if ext else None
-    retina = bname.lower().endswith('@2x') if filename else False
-    if size == (1024, 1024):
-        retina = True  # stupid double usage of ic10
-
-    # Icns specific names
+    # Filter attributes
     desc = None
-    if ext == 'icns' and filename:
-        for candidate in ['template', 'selected', 'dark']:
-            if filename.endswith(candidate + '.icns'):
-                desc = candidate
-                break
+    size = None
+    maxsize = None
+    retina = False
+
+    # Guess extension
+    ext = RawData.determine_file_ext(data)
+    if not ext and filename:
+        if filename.endswith('.rgb'):
+            ext = 'rgb'
+        elif filename.endswith('.mask'):
+            maxsize = len(data)
+            desc = 'mask'
+
+    # Guess image size
+    if ext:
+        size = RawData.determine_image_size(data, ext)
+
+    # if filename is set, then bname is also set (see above)
+    if filename:
+        # Guess retina flag
+        retina = bname.lower().endswith('@2x')
+        # Guess icns-specific type
+        if ext == 'icns':
+            for candidate in ['template', 'selected', 'dark']:
+                if bname.endswith(candidate):
+                    desc = candidate
+                    break
+
+    # stupid double usage of ic10, enforce retina flag
+    if size == (1024, 1024):
+        retina = True
 
     choices = []
     for x in _TYPES.values():
         if retina != x.retina:  # png + jp2
             continue
+        if desc and desc != x.desc:  # icns or rgb-mask
+            continue
         if ext:
             if size != x.size or not x.is_type(ext):
-                continue
-            if desc and desc != x.desc:  # icns only
                 continue
         else:  # not ext
             if x.ext_certain:
                 continue
+            if maxsize and x.maxsize and maxsize != x.maxsize:  # mask only
+                continue
         choices.append(x)
 
+    return _best_option(choices, ext)
+
+
+def _best_option(choices: List[Media], ext: Optional[str] = None) -> Media:
+    '''
+    Get most favorable media type.
+    If more than one option exists, choose based on order index of ext.
+    '''
     if len(choices) == 1:
         return choices[0]
     # Try get most favorable type (sort order of types)
@@ -294,7 +306,7 @@ def guess(data: bytes, filename: Optional[str] = None) -> Media:
                 best_choice.append(x)
         if len(best_choice) == 1:
             return best_choice[0]
-    # Else
-    raise CanNotDetermine(
-        'Could not determine type for file: "{}" – one of {}.'.format(
-            filename, [x.key for x in choices]))
+        choices = best_choice
+
+    raise CanNotDetermine('Could not determine type – one of {}.'.format(
+        [x.key for x in choices]))
