@@ -67,8 +67,8 @@ def cli_update(args: ArgParams) -> None:
         icns.add_media(IcnsType.key_from_readable(key), file=val, force=True)
         has_changes = True
     # write file
-    if has_changes or args.o:
-        icns.write(args.o or args.file, toc=icns.has_toc())
+    if has_changes or args.output:
+        icns.write(args.output or args.file, toc=icns.has_toc())
 
 
 def cli_print(args: ArgParams) -> None:
