@@ -21,6 +21,7 @@ positional arguments:
   command
     extract (e)   Read and extract contents of icns file(s).
     compose (c)   Create new icns file from provided image files.
+    update (u)    Update existing icns file by inserting or removing media entries.
     print (p)     Print contents of icns file(s).
     test (t)      Test if icns file is valid.
     convert (img) Convert images between PNG, ARGB, or RGB + alpha mask.
@@ -31,16 +32,21 @@ positional arguments:
 
 ```sh
 # extract
-icnsutil e ExistingIcon.icns -o ./outdir/
+icnsutil e Existing.icns -o ./outdir/
 
 # compose
-icnsutil c NewIcon.icns 16x16.png 16x16@2x.png *.jp2
+icnsutil c New.icns 16x16.png 16x16@2x.png *.jp2
+
+# update
+icnsutil u Existing.icns -rm toc ic04 ic05
+icnsutil u Existing.icns -set is32=16.rgb dark="dark icon.icns"
+icnsutil u Existing.icns -rm dark -set ic04=16.argb -o Updated.icns
 
 # print
-icnsutil p ExistingIcon.icns
+icnsutil p Existing.icns
 
 # verify valid format
-icnsutil t ExistingIcon.icns
+icnsutil t Existing.icns
 
 # convert image
 icnsutil img 1024.png 512@2x.jp2
@@ -57,7 +63,7 @@ icnsutil img png 16.rgb 16.mask
 import icnsutil
 
 # extract
-img = icnsutil.IcnsFile('ExistingIcon.icns')
+img = icnsutil.IcnsFile('Existing.icns')
 img.export(out_dir, allowed_ext='png',
            recursive=True, convert_png=True)
 
@@ -65,7 +71,14 @@ img.export(out_dir, allowed_ext='png',
 img = icnsutil.IcnsFile()
 img.add_media(file='16x16.png')
 img.add_media(file='16x16@2x.png')
-img.write('./new-icon.icns', toc=False)
+img.write('./new-icon.icns')
+
+# update
+img = icnsutil.IcnsFile('Existing.icns')
+img.add_media('icp4', file='16x16.png', force=True)
+if img.remove_media('TOC '):
+    print('table of contents removed')
+img.write('Existing.icns', toc=False)
 
 # print
 icnsutil.IcnsFile.description(fname, indent=2)

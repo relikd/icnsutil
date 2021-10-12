@@ -9,7 +9,7 @@ from argparse import ArgumentParser, ArgumentTypeError, RawTextHelpFormatter
 from argparse import Namespace as ArgParams
 if __name__ == '__main__':
     sys.path[0] = os.path.dirname(sys.path[0])
-from icnsutil import __version__, IcnsFile, ArgbImage
+from icnsutil import __version__, IcnsFile, IcnsType, ArgbImage
 
 
 def cli_extract(args: ArgParams) -> None:
@@ -42,6 +42,33 @@ def cli_compose(args: ArgParams) -> None:
     for x in enum_with_stdin(args.source):
         img.add_media(file=x)
     img.write(dest, toc=not args.no_toc)
+
+
+def cli_update(args: ArgParams) -> None:
+    ''' Update existing icns file by inserting or removing media entries. '''
+    icns = IcnsFile(args.file)
+    has_changes = False
+    # remove media
+    for x in args.rm or []:
+        has_changes |= icns.remove_media(IcnsType.key_from_readable(x))
+    # add media
+    for key_val in args.set or []:
+        def fail():
+            raise ArgumentTypeError(
+                'Expected arg format KEY=FILE - got "{}"'.format(key_val))
+        if '=' not in key_val:
+            fail()
+        key, val = key_val.split('=', )
+        if not val:
+            fail()
+        if not os.path.isfile(val):
+            raise ArgumentTypeError('File does not exist "{}"'.format(val))
+
+        icns.add_media(IcnsType.key_from_readable(key), file=val, force=True)
+        has_changes = True
+    # write file
+    if has_changes or args.o:
+        icns.write(args.o or args.file, toc=icns.has_toc())
 
 
 def cli_print(args: ArgParams) -> None:
@@ -170,6 +197,19 @@ Notes:
 - Use one of these suffixes to automatically assign icns files:
    template, selected, dark
 '''
+
+    # Update
+    cmd = add_command('update', 'u', cli_update)
+    cmd.add_argument('file', type=PathExist('f', stdin=True),
+                     metavar='FILE', help='The icns file to be updated.')
+    cmd.add_argument('-o', '--output', type=str, metavar='OUT_FILE',
+                     help='Choose another destination, dont overwrite input.')
+    grp = cmd.add_argument_group('action')
+    grp.add_argument('-rm', type=str, nargs='+', metavar='KEY',
+                     help='Remove media keys from icns file')
+    grp.add_argument('-set', type=str, nargs='+', metavar='KEY=FILE',
+                     help='Append or replace media in icns file')
+    cmd.epilog = 'KEY supports names like "dark", "selected", and "template"'
 
     # Print
     cmd = add_command('print', 'p', cli_print)

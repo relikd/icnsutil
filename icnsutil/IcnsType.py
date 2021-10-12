@@ -213,6 +213,16 @@ def get(key: Media.KeyT) -> Media:
     raise NotImplementedError('Unsupported icns type "' + str(key) + '"')
 
 
+def key_from_readable(key: str) -> Media.KeyT:
+    key_mapping = {
+        'dark': b'\xFD\xD9\x2F\xA8',
+        'selected': 'slct',
+        'template': 'sbtp',
+        'toc': 'TOC ',
+    }  # type: Dict[str, Media.KeyT]
+    return key_mapping.get(key.lower(), key)
+
+
 def match_maxsize(total: int, typ: str) -> Media:
     assert(typ == 'argb' or typ == 'rgb')
     ret = [x for x in _TYPES.values() if x.is_type(typ) and x.maxsize == total]
