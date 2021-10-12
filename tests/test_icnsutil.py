@@ -270,7 +270,7 @@ class TestIcnsType(unittest.TestCase):
             ('it32', 'rgb', '', (128, 128), 49152),  # 3x8-bit
             ('t8mk', 'bin', 'mask', (128, 128), 16384),  # 8-bit mask
             ('ic05', 'argb', '', (32, 32), 4096),  # 4x8-bit
-            ('icp6', 'png', '', (64, 64), None),
+            ('icp6', 'png', '', (48, 48), None),
             ('ic14', 'png', '@2x', (512, 512), None),
             ('info', 'plist', '', None, None),
             ('sbtp', 'icns', 'template', None, None),

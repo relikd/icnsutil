@@ -141,7 +141,7 @@ _TYPES = {x.key: x for x in (
     # Write support for these:
     Media('icp4', ['png', 'jp2', 'rgb'], 16, os=10.7),
     Media('icp5', ['png', 'jp2', 'rgb'], 32, os=10.7),
-    Media('icp6', ['png'], 64, os=10.7),
+    Media('icp6', ['png', 'jp2'], 48, os=10.7),
     Media('ic07', ['png', 'jp2'], 128, os=10.7),
     Media('ic08', ['png', 'jp2'], 256, os=10.5),
     Media('ic09', ['png', 'jp2'], 512, os=10.5),
