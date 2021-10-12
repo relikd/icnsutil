@@ -171,10 +171,40 @@ class TestIcnsFile(unittest.TestCase):
         self.assertEqual(
             list(newimg.media.keys()), ['icp5', 'ic11', 'ic08', 'ic13'])
 
+    def test_add_nested_icns(self):
+        img = IcnsFile()
+        img.add_media(file='selected.icns')
+        self.assertTrue('slct' in img.media.keys())
+        self.assertNotEqual(img.media['slct'][:4], b'icns')
+        with self.assertRaises(KeyError):
+            img.add_media('slct', file='rgb.icns')
+        with self.assertRaises(IcnsType.CanNotDetermine):
+            img.add_media(file='icp4rgb.icns')
+        with self.assertRaises(IcnsType.CanNotDetermine):
+            img.add_media(file='rgb.icns')
+        img.add_media('no_key', file='rgb.icns')
+        self.assertTrue('no_key' in img.media.keys())
+        self.assertNotEqual(img.media['no_key'][:4], b'icns')
+
+    def test_remove_media(self):
+        img = IcnsFile()
+        img.add_media(file='selected.icns')
+        img.add_media(file='rgb.icns.rgb')
+        img.add_media(file='rgb.icns.argb')
+        self.assertListEqual(list(img.media.keys()), ['slct', 'is32', 'ic04'])
+        img.remove_media('is32')
+        self.assertListEqual(list(img.media.keys()), ['slct', 'ic04'])
+        img.remove_media(b'ic04')
+        self.assertListEqual(list(img.media.keys()), ['slct', 'ic04'])
+        img.remove_media('')
+        self.assertListEqual(list(img.media.keys()), ['slct', 'ic04'])
+        img.remove_media('slct')
+        self.assertListEqual(list(img.media.keys()), ['ic04'])
+
     def test_toc(self):
         img = IcnsFile()
         fname_out = 'tmp-out.icns'
-        img.add_media(file='rgb.icns.argb', key='ic04')
+        img.add_media('ic04', file='rgb.icns.argb')
         # without TOC
         img.write(fname_out, toc=False)
         with open(fname_out, 'rb') as fp:
@@ -183,6 +213,7 @@ class TestIcnsFile(unittest.TestCase):
             self.assertEqual(fp.read(4), b'ic04')
             self.assertEqual(fp.read(4), b'\x00\x00\x02\xD1')
             self.assertEqual(fp.read(4), b'ARGB')
+        self.assertFalse(IcnsFile(fname_out).has_toc())
         # with TOC
         img.write(fname_out, toc=True)
         with open(fname_out, 'rb') as fp:
@@ -195,6 +226,7 @@ class TestIcnsFile(unittest.TestCase):
             self.assertEqual(fp.read(4), b'ic04')
             self.assertEqual(fp.read(4), b'\x00\x00\x02\xD1')
             self.assertEqual(fp.read(4), b'ARGB')
+        self.assertTrue(IcnsFile(fname_out).has_toc())
         os.remove(fname_out)
 
     def test_verify(self):

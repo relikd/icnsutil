@@ -8,6 +8,8 @@ from .ArgbImage import ArgbImage
 
 
 class IcnsFile:
+    __slots__ = ['media', 'infile']
+
     @staticmethod
     def verify(fname: str) -> Iterator[str]:
         '''
@@ -129,6 +131,9 @@ class IcnsFile:
                 print('Warning: unknown media type: {}, {} bytes, "{}"'.format(
                     str(key), len(data), file), file=stderr)
 
+    def has_toc(self) -> bool:
+        return 'TOC ' in self.media.keys()
+
     def add_media(self, key: Optional[IcnsType.Media.KeyT] = None, *,
                   file: Optional[str] = None, data: Optional[bytes] = None,
                   force: bool = False) -> None:
@@ -143,13 +148,28 @@ class IcnsFile:
                 data = fp.read()
         if not data:
             raise AttributeError('Did you miss file= or data= attribute?')
+
         if not key:  # Determine ICNS type
-            key = IcnsType.guess(data, file).key
+            iType = IcnsType.guess(data, file)
+            key = iType.key
+            is_icns = iType.is_type('icns')
+        else:
+            is_icns = True  # we dont know, so we assume it is
+
         # Check if type is unique
         if not force and key in self.media.keys():
             raise KeyError('Image with identical key "{}". File: {}'.format(
                 str(key), file))
+        # Nested icns files must omit the icns header
+        if is_icns and data[:4] == b'icns':
+            data = data[8:]
         self.media[key] = data
+
+    def remove_media(self, key: IcnsType.Media.KeyT) -> bool:
+        if key not in self.media.keys():
+            return False
+        del self.media[key]
+        return True
 
     def write(self, fname: str, *, toc: bool = True) -> None:
         ''' Create a new ICNS file from stored media. '''
@@ -232,8 +252,8 @@ class IcnsFile:
 
     def _make_toc(self, *, enabled: bool) -> List[IcnsType.Media.KeyT]:
         # Rebuild TOC to ensure soundness
-        if 'TOC ' in self.media.keys():
-            del(self.media['TOC '])
+        if self.has_toc():
+            del self.media['TOC ']
         # We loop two times over the keys; so, make sure order is identical.
         # By default this will be the same order as read/written.
         order = list(self.media.keys())
