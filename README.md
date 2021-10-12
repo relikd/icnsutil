@@ -35,7 +35,7 @@ positional arguments:
 icnsutil e Existing.icns -o ./outdir/
 
 # compose
-icnsutil c New.icns 16x16.png 16x16@2x.png *.jp2
+icnsutil c New.icns 16x16.png 16x16@2x.png *.jp2 --toc
 
 # update
 icnsutil u Existing.icns -rm toc ic04 ic05
@@ -78,7 +78,7 @@ img = icnsutil.IcnsFile('Existing.icns')
 img.add_media('icp4', file='16x16.png', force=True)
 if img.remove_media('TOC '):
     print('table of contents removed')
-img.write('Existing.icns', toc=False)
+img.write('Existing.icns', toc=True)
 
 # print
 icnsutil.IcnsFile.description(fname, indent=2)

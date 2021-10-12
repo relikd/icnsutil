@@ -41,7 +41,7 @@ def cli_compose(args: ArgParams) -> None:
     img = IcnsFile()
     for x in enum_with_stdin(args.source):
         img.add_media(file=x)
-    img.write(dest, toc=not args.no_toc)
+    img.write(dest, toc=args.toc)
 
 
 def cli_update(args: ArgParams) -> None:
@@ -182,13 +182,13 @@ def main() -> None:
     cmd = add_command('compose', 'c', cli_compose)
     cmd.add_argument('-f', '--force', action='store_true',
                      help='force overwrite output file')
-    cmd.add_argument('--no-toc', action='store_true',
-                     help='do not write table of contents to file')
+    cmd.add_argument('--toc', action='store_true',
+                     help='write table of contents to file')
     cmd.add_argument('target', type=str, metavar='destination',
                      help='Output file for newly created icns file.')
     cmd.add_argument('source', type=PathExist('f', stdin=True), nargs='+',
                      metavar='src',
-                     help='One or more media files: png, argb, plist, icns.')
+                     help='One or more media files: png, argb, rgb, jp2, icns')
     cmd.epilog = '''
 Notes:
 - TOC is optional but only a few bytes long (8b per media entry).

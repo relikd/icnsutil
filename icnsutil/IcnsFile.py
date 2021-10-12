@@ -171,7 +171,7 @@ class IcnsFile:
         del self.media[key]
         return True
 
-    def write(self, fname: str, *, toc: bool = True) -> None:
+    def write(self, fname: str, *, toc: bool = False) -> None:
         ''' Create a new ICNS file from stored media. '''
         # Rebuild TOC to ensure soundness
         order = self._make_toc(enabled=toc)
