@@ -17,7 +17,11 @@ uninstall:
 
 .PHONY: test
 test:
-	python3 tests/test_icnsutil.py
+	@echo 'Test lib...'
+	@python3 tests/test_icnsutil.py
+	@echo
+	@echo 'Test CLI...'
+	@python3 tests/test_cli.py
 
 dist-env:
 	@echo Creating virtual environment...
