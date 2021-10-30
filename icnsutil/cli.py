@@ -37,7 +37,7 @@ def cli_compose(args: ArgParams) -> None:
         print(
             'File "{}" already exists. Force overwrite with -f.'.format(dest),
             file=sys.stderr)
-        return
+        exit(1)
     img = IcnsFile()
     for x in enum_with_stdin(args.source):
         img.add_media(file=x)
@@ -56,16 +56,23 @@ def cli_update(args: ArgParams) -> None:
         def fail():
             raise ArgumentTypeError(
                 'Expected arg format KEY=FILE - got "{}"'.format(key_val))
+        if key_val.lower() == 'toc':
+            key_val = 'toc=1'
         if '=' not in key_val:
             fail()
-        key, val = key_val.split('=', )
+        key, val = key_val.split('=')
         if not val:
             fail()
+
+        has_changes = True
+        if key.lower() == 'toc':
+            icns.add_media('TOC ', data=b'1', force=True)
+            continue
+
         if not os.path.isfile(val):
             raise ArgumentTypeError('File does not exist "{}"'.format(val))
 
         icns.add_media(IcnsType.key_from_readable(key), file=val, force=True)
-        has_changes = True
     # write file
     if has_changes or args.output:
         icns.write(args.output or args.file, toc=icns.has_toc())
@@ -120,6 +127,7 @@ def cli_convert(args: ArgParams) -> None:
     else:
         print('Could not determine target image-type for file "{}".'.format(
             dest), file=sys.stderr)
+        exit(1)
 
 
 def enum_with_stdin(file_arg: list) -> Iterator[str]:
@@ -149,7 +157,7 @@ def main() -> None:
     # Args Parser
     parser = ArgumentParser(description=__doc__,
                             formatter_class=RawTextHelpFormatter)
-    parser.set_defaults(func=lambda _: parser.print_help(sys.stderr))
+    parser.set_defaults(func=lambda _: parser.print_help(sys.stdout))
     parser.add_argument(
         '-v', '--version', action='version', version='icnsutil ' + __version__)
     sub_parser = parser.add_subparsers(metavar='command')
@@ -170,7 +178,7 @@ def main() -> None:
     cmd.add_argument('-o', '--export-dir', type=PathExist('d'),
                      metavar='DIR', help='set custom export directory')
     cmd.add_argument('-k', '--keys', action='store_true',
-                     help='use icns key as filenam')
+                     help='use icns key as filename')
     cmd.add_argument('-c', '--convert', action='store_true',
                      help='convert ARGB and RGB images to PNG')
     cmd.add_argument('--png-only', action='store_true',
