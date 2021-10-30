@@ -2,16 +2,25 @@
 
 A fully-featured python library to handle reading and writing `.icns` files.
 
+## Install
 
-## HTML icon viewer
+The easy way is to use the PyPi.org index:
 
-Here are two tools to open icns files directly in your browser. Both tools can be used either with an icns file or a rgb / argb image file.
+```sh
+pip3 install icnsutil
+```
 
-- The [inspector] shows the structure of an icns file (useful to understand byte-unpacking in ARGB and 24-bit RGB files).
-- The [viewer] displays icons in ARGB or 24-bit RGB file format.
+Or you can install it **manually** by creating a symlink to `cli.py`:
 
-[inspector]: https://relikd.github.io/icnsutil/html/inspector.html
-[viewer]: https://relikd.github.io/icnsutil/html/viewer.html
+```sh
+ln -s '/absolute/path/to/icnsutil/icnsutil/cli.py' /usr/local/bin/icnsutil
+```
+
+Or call the python module (if the module is in the search path):
+
+```sh
+python3 -m icnsutil
+```
 
 
 ## Usage
@@ -113,6 +122,15 @@ with open('32x32.mask', 'wb') as fp:
 
 Note: the CLI `export` command will fail if you run `--convert` without Pillow.
 
+## HTML icon viewer
+
+Here are two tools to open icns files directly in your browser. Both tools can be used either with an icns file or a rgb / argb image file.
+
+- The [inspector] shows the structure of an icns file (useful to understand byte-unpacking in ARGB and 24-bit RGB files).
+- The [viewer] displays icons in ARGB or 24-bit RGB file format.
+
+[inspector]: https://relikd.github.io/icnsutil/html/inspector.html
+[viewer]: https://relikd.github.io/icnsutil/html/viewer.html
 
 ## Help needed
 
