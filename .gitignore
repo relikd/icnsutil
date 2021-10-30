@@ -2,6 +2,7 @@
 /*.txt
 /tests/format-support-*/
 /tests/fixtures/tmp_*
+/dist-env/
 
 __pycache__/
 *.py[cod]
