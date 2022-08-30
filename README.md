@@ -90,10 +90,16 @@ if img.remove_media('TOC '):
 img.write('Existing.icns', toc=True)
 
 # print
-icnsutil.IcnsFile.description(fname, indent=2)
+# return type str
+desc = icnsutil.IcnsFile.description(fname, indent=2)
+print(desc)
 
 # verify valid format
-icnsutil.IcnsFile.verify(fname)
+# return type Iterator[str]
+itr = icnsutil.IcnsFile.verify(fname)
+print(list(itr))
+# If you just want to check if a file is faulty, you can use `any(itr)` instead.
+# This way it will not test all checks but break early after the first hit.
 ```
 
 
