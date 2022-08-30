@@ -90,10 +90,14 @@ if img.remove_media('TOC '):
 img.write('Existing.icns', toc=True)
 
 # print
-icnsutil.IcnsFile.description(fname, indent=2)
+# result type string
+desc = icnsutil.IcnsFile.description(fname, indent=2)
+print(desc)
 
 # verify valid format
-icnsutil.IcnsFile.verify(fname)
+# result type objet(list)
+verify = icnsutil.IcnsFile.verify(fname)
+print(list(verify))
 ```
 
 
