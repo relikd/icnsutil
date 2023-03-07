@@ -246,7 +246,7 @@ is32: 705 bytes, rgb: 16x16
 s8mk: 256 bytes, mask: 16x16
 it32: 14005 bytes, rgb: 128x128
 t8mk: 16384 bytes, mask: 128x128
-'''.lstrip().replace('\n', os.linesep))
+'''.strip().replace('\n', os.linesep))
         str = IcnsFile.description('selected.icns', verbose=True, indent=0)
         self.assertEqual(str, '''
 info: 314 bytes, offset: 8, plist: info
@@ -259,7 +259,7 @@ ic05: 690 bytes, offset: 5148, argb: 32x32
 icsB: 1001 bytes, offset: 5846, png: 18x18@2x
 ic11: 1056 bytes, offset: 6855, png: 16x16@2x
 slct: 7660 bytes, offset: 7919, icns: selected
-'''.lstrip().replace('\n', os.linesep))
+'''.strip().replace('\n', os.linesep))
 
 
 class TestIcnsType(unittest.TestCase):

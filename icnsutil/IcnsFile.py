@@ -116,10 +116,10 @@ class IcnsFile:
                     txt += ', ' + ext + ': ' + iType.filename(size_only=True)
                 except NotImplementedError:
                     txt += ': UNKNOWN TYPE: ' + str(ext or data[:6])
-            return txt[len(os.linesep):] + os.linesep
+            return txt[len(os.linesep):]
         # if file is not an icns file
         except RawData.ParserError as e:
-            return ' ' * indent + str(e) + os.linesep
+            return ' ' * indent + str(e)
 
     def __init__(self, file: Optional[str] = None) -> None:
         ''' Read .icns file and load bundled media files into memory. '''

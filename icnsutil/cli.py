@@ -78,9 +78,13 @@ def cli_update(args: ArgParams) -> None:
 
 def cli_print(args: ArgParams) -> None:
     ''' Print contents of icns file(s). '''
+    indent = 0 if args.quiet else 2
     for fname in enum_with_stdin(args.file):
-        print('File:', fname)
-        print(IcnsFile.description(fname, verbose=args.verbose, indent=2))
+        if not args.quiet:
+            print('File:', fname)
+        print(IcnsFile.description(fname, verbose=args.verbose, indent=indent))
+        if not args.quiet:
+            print()
 
 
 def cli_verify(args: ArgParams) -> None:
@@ -219,6 +223,8 @@ def main() -> None:
     cmd = add_command('print', 'p', cli_print)
     cmd.add_argument('-v', '--verbose', action='store_true',
                      help='print all keys with offsets and sizes')
+    cmd.add_argument('-q', '--quiet', action='store_true',
+                     help='do not print filename and indentation')
     cmd.add_argument('file', type=PathExist('f', stdin=True), nargs='+',
                      metavar='FILE', help='One or more .icns files.')
 
