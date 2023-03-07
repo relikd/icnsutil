@@ -4,9 +4,8 @@ Export existing icns files or compose new ones.
 '''
 import os  # path, makedirs
 import sys  # path, stderr
-from typing import Iterator, Optional, Callable
-from argparse import ArgumentParser, ArgumentTypeError, RawTextHelpFormatter
-from argparse import Namespace as ArgParams
+from typing import Iterator, Optional, Callable, List
+from argparse import ArgumentParser, ArgumentTypeError, Namespace as ArgParams
 if __name__ == '__main__':
     sys.path[0] = os.path.dirname(sys.path[0])
 from icnsutil import __version__, IcnsFile, IcnsType, ArgbImage
@@ -53,16 +52,15 @@ def cli_update(args: ArgParams) -> None:
         has_changes |= icns.remove_media(IcnsType.key_from_readable(x))
     # add media
     for key_val in args.set or []:
-        def fail():
-            raise ArgumentTypeError(
-                'Expected arg format KEY=FILE - got "{}"'.format(key_val))
         if key_val.lower() == 'toc':
             key_val = 'toc=1'
         if '=' not in key_val:
-            fail()
-        key, val = key_val.split('=')
+            raise ArgumentTypeError(
+                'Expected arg format KEY=FILE - got "{}"'.format(key_val))
+        key, val = key_val.split('=', 1)
         if not val:
-            fail()
+            raise ArgumentTypeError(
+                'Expected arg format KEY=FILE - got "{}"'.format(key_val))
 
         has_changes = True
         if key.lower() == 'toc':
@@ -130,7 +128,7 @@ def cli_convert(args: ArgParams) -> None:
         exit(1)
 
 
-def enum_with_stdin(file_arg: list) -> Iterator[str]:
+def enum_with_stdin(file_arg: List[str]) -> Iterator[str]:
     for x in file_arg:
         if x == '-':
             for line in sys.stdin.readlines():
@@ -155,18 +153,18 @@ def main() -> None:
             return path
 
     # Args Parser
-    parser = ArgumentParser(description=__doc__,
-                            formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=__doc__)
     parser.set_defaults(func=lambda _: parser.print_help(sys.stdout))
     parser.add_argument(
         '-v', '--version', action='version', version='icnsutil ' + __version__)
     sub_parser = parser.add_subparsers(metavar='command')
 
     # helper method
-    def add_command(name: str, alias: str, fn: Callable[[ArgParams], None]):
+    def add_command(
+        name: str, alias: str, fn: Callable[[ArgParams], None]
+    ) -> ArgumentParser:
         desc = fn.__doc__ or ''
         cmd = sub_parser.add_parser(name, aliases=[alias],
-                                    formatter_class=RawTextHelpFormatter,
                                     help=desc, description=desc.strip())
         cmd.set_defaults(func=fn)
         return cmd
@@ -189,22 +187,20 @@ def main() -> None:
     # Compose
     cmd = add_command('compose', 'c', cli_compose)
     cmd.add_argument('-f', '--force', action='store_true',
-                     help='force overwrite output file')
-    cmd.add_argument('--toc', action='store_true',
-                     help='write table of contents to file')
+                     help='Force overwrite output file')
+    cmd.add_argument('--toc', action='store_true', help='''
+        Write table of contents to file.
+        TOC is optional and uses just a few bytes (8b per media entry).''')
     cmd.add_argument('target', type=str, metavar='destination',
                      help='Output file for newly created icns file.')
     cmd.add_argument('source', type=PathExist('f', stdin=True), nargs='+',
-                     metavar='src',
-                     help='One or more media files: png, argb, rgb, jp2, icns')
-    cmd.epilog = '''
-Notes:
-- TOC is optional but only a few bytes long (8b per media entry).
-- Icon dimensions are read directly from file.
-- Filename suffix "@2x.png" or "@2x.jp2" sets the retina flag.
-- Use one of these suffixes to automatically assign icns files:
-   template, selected, dark
-'''
+                     metavar='src', help='''
+        One or more media files: png, argb, rgb, jp2, icns.
+        --
+        Icon dimensions are read directly from file.
+        Filename suffixes "@2x.png" and "@2x.jp2" will set the retina flag.
+        If the suffix ends on one of these (template, selected, dark),
+        the file is automatically assigned to an icns file field.''')
 
     # Update
     cmd = add_command('update', 'u', cli_update)

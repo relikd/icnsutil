@@ -7,7 +7,7 @@ def pack(data: List[int]) -> bytes:
     buf = []  # type: List[int]
     i = 0
 
-    def flush_buf():
+    def flush_buf() -> None:
         # write out non-repeating bytes
         if len(buf) > 0:
             ret.append(len(buf) - 1)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from typing import Union, Iterator, Optional
+from typing import Union, Optional
 from math import sqrt
 from . import IcnsType, PackBytes, RawData
 try:
@@ -16,6 +16,8 @@ class ArgbImage:
     def from_mono(cls, data: bytes, iType: IcnsType.Media) -> 'ArgbImage':
         ''' Load monochrome 1-bit image with or without mask. '''
         assert(iType.bits == 1)
+        assert(iType.size)
+        assert(iType.channels)
         img = []
         for byte in data:
             for i in range(7, -1, -1):
@@ -31,9 +33,13 @@ class ArgbImage:
         self.r, self.g, self.b = img, img, img
         return self
 
-    def __init__(self, *, data: Optional[bytes] = None,
-                 file: Optional[str] = None,
-                 mask: Union[bytes, str, None] = None) -> None:
+    def __init__(
+        self,
+        *,
+        data: Optional[bytes] = None,
+        file: Optional[str] = None,
+        mask: Union[bytes, str, None] = None,
+    ) -> None:
         '''
         Provide either a filename or raw binary data.
         - mask : Optional, may be either binary data or filename
@@ -91,8 +97,9 @@ class ArgbImage:
         self.g = uncompressed_data[(i + 1) * per_channel:(i + 2) * per_channel]
         self.b = uncompressed_data[(i + 2) * per_channel:(i + 3) * per_channel]
 
-    def load_mask(self, *, file: Optional[str] = None,
-                  data: Optional[bytes] = None) -> None:
+    def load_mask(
+        self, *, file: Optional[str] = None, data: Optional[bytes] = None,
+    ) -> None:
         ''' Data must be uncompressed and same length as a single channel! '''
         if file:
             with open(file, 'rb') as fp:

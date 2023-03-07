@@ -79,14 +79,18 @@ class IcnsFile:
                     x, y)
 
     @staticmethod
-    def description(fname: str, *, verbose: bool = False, indent: int = 0) -> \
-            str:
+    def description(fname: str, *, verbose: bool = False, indent: int = 0) \
+            -> str:
         return IcnsFile._description(
             RawData.parse_icns_file(fname), verbose=verbose, indent=indent)
 
     @staticmethod
-    def _description(enumerator: Iterable[Tuple[IcnsType.Media.KeyT, bytes]],
-                     *, verbose: bool = False, indent: int = 0) -> str:
+    def _description(
+        enumerator: Iterable[Tuple[IcnsType.Media.KeyT, bytes]],
+        *,
+        verbose: bool = False,
+        indent: int = 0,
+    ) -> str:
         ''' Expects an enumerator with (key, size, data) '''
         txt = ''
         offset = 8  # already with icns header
@@ -117,7 +121,7 @@ class IcnsFile:
         except RawData.ParserError as e:
             return ' ' * indent + str(e) + os.linesep
 
-    def __init__(self, file: str = None) -> None:
+    def __init__(self, file: Optional[str] = None) -> None:
         ''' Read .icns file and load bundled media files into memory. '''
         self.media = {}  # type: Dict[IcnsType.Media.KeyT, bytes]
         self.infile = file
@@ -134,9 +138,14 @@ class IcnsFile:
     def has_toc(self) -> bool:
         return 'TOC ' in self.media.keys()
 
-    def add_media(self, key: Optional[IcnsType.Media.KeyT] = None, *,
-                  file: Optional[str] = None, data: Optional[bytes] = None,
-                  force: bool = False) -> None:
+    def add_media(
+        self,
+        key: Optional[IcnsType.Media.KeyT] = None,
+        *,
+        file: Optional[str] = None,
+        data: Optional[bytes] = None,
+        force: bool = False,
+    ) -> None:
         '''
         If you provide both, data and file, data takes precedence.
         However, the filename is still used for type-guessing.
@@ -182,11 +191,16 @@ class IcnsFile:
             for key in order:
                 RawData.icns_header_write_data(fp, key, self.media[key])
 
-    def export(self, outdir: Optional[str] = None, *,
-               allowed_ext: str = '*', key_suffix: bool = False,
-               convert_png: bool = False, decompress: bool = False,
-               recursive: bool = False) -> Dict[IcnsType.Media.KeyT,
-                                                Union[str, Dict]]:
+    def export(
+        self,
+        outdir: Optional[str] = None,
+        *,
+        allowed_ext: str = '*',
+        key_suffix: bool = False,
+        convert_png: bool = False,
+        decompress: bool = False,
+        recursive: bool = False,
+    ) -> Dict[IcnsType.Media.KeyT, Union[str, Dict]]:
         '''
         Write all bundled media files to output directory.
 
@@ -266,9 +280,14 @@ class IcnsFile:
 
         return order
 
-    def _export_single(self, outdir: str, key: IcnsType.Media.KeyT,
-                       key_suffix: bool, decompress: bool,
-                       allowed: List[str]) -> Optional[str]:
+    def _export_single(
+        self,
+        outdir: str,
+        key: IcnsType.Media.KeyT,
+        key_suffix: bool,
+        decompress: bool,
+        allowed: List[str],
+    ) -> Optional[str]:
         ''' You must ensure that keys exist in self.media '''
         data = self.media[key]
         ext = RawData.determine_file_ext(data)
@@ -294,9 +313,13 @@ class IcnsFile:
             fp.write(data)
         return fname
 
-    def _export_to_png(self, outdir: str, img_key: IcnsType.Media.KeyT,
-                       mask_key: Optional[IcnsType.Media.KeyT],
-                       key_suffix: bool) -> Optional[str]:
+    def _export_to_png(
+        self,
+        outdir: str,
+        img_key: IcnsType.Media.KeyT,
+        mask_key: Optional[IcnsType.Media.KeyT],
+        key_suffix: bool,
+    ) -> Optional[str]:
         ''' You must ensure key and mask_key exists! '''
         data = self.media[img_key]
         if RawData.determine_file_ext(data) not in ['argb', None]:

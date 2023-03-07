@@ -4,7 +4,7 @@ Namespace for the ICNS format.
 @see https://en.wikipedia.org/wiki/Apple_Icon_Image_format
 '''
 import os  # path
-from typing import Union, Optional, Tuple, Iterator, List, Iterable, Dict
+from typing import Union, Optional, Tuple, Iterator, List, Iterable
 from . import PackBytes, RawData
 
 
@@ -17,10 +17,17 @@ class Media:
     __slots__ = ['key', 'types', 'size', 'channels', 'bits', 'availability',
                  'desc', 'compressable', 'retina', 'maxsize', 'ext_certain']
 
-    def __init__(self, key: KeyT, types: list,
-                 size: Optional[Union[int, Tuple[int, int]]] = None,
-                 *, ch: Optional[int] = None, bits: Optional[int] = None,
-                 os: Optional[float] = None, desc: str = '') -> None:
+    def __init__(
+        self,
+        key: KeyT,
+        types: List[str],
+        size: Union[int, Tuple[int, int], None] = None,
+        *,
+        ch: Optional[int] = None,
+        bits: Optional[int] = None,
+        os: Optional[float] = None,
+        desc: str = '',
+    ) -> None:
         self.key = key
         self.types = types
         self.size = (size, size) if isinstance(size, int) else size
@@ -54,8 +61,8 @@ class Media:
             return self.desc  # guaranteed to be icon, mask, or iconmask
         return self.types[-1]
 
-    def decompress(self, data: bytes, ext: Optional[str] = '-?-') -> Optional[
-            List[int]]:
+    def decompress(self, data: bytes, ext: Optional[str] = '-?-') \
+            -> Optional[List[int]]:
         ''' Returns None if media is not decompressable. '''
         if self.compressable:
             if ext == '-?-':
@@ -165,11 +172,11 @@ _TYPES = {x.key: x for x in (
     Media('icnV', ['bin'], desc='4-byte Icon Composer.app bundle version'),
     Media('name', ['bin'], desc='Unknown'),
     Media('info', ['plist'], desc='Info binary plist'),
-)}  # type: Dict[Media.KeyT, Media]
+)}
 
 
-def enum_img_mask_pairs(available_keys: Iterable[Media.KeyT]) -> Iterator[
-        Tuple[Optional[str], Optional[str]]]:
+def enum_img_mask_pairs(available_keys: Iterable[Media.KeyT]) \
+        -> Iterator[Tuple[Optional[str], Optional[str]]]:
     for mask_k, *imgs in [  # list probably never changes, ARGB FTW
         ('s8mk', 'is32', 'ics8', 'ics4', 'icp4'),
         ('l8mk', 'il32', 'icl8', 'icl4', 'icp5'),
@@ -186,8 +193,8 @@ def enum_img_mask_pairs(available_keys: Iterable[Media.KeyT]) -> Iterator[
             yield None, mk
 
 
-def enum_png_convertable(available_keys: Iterable[Media.KeyT]) -> Iterator[
-        Tuple[Media.KeyT, Optional[Media.KeyT]]]:
+def enum_png_convertable(available_keys: Iterable[Media.KeyT]) \
+        -> Iterator[Tuple[Media.KeyT, Optional[Media.KeyT]]]:
     ''' Yield (image-key, mask-key or None) '''
     for img in _TYPES.values():
         if img.key not in available_keys:
@@ -219,8 +226,8 @@ def key_from_readable(key: str) -> Media.KeyT:
         'selected': 'slct',
         'template': 'sbtp',
         'toc': 'TOC ',
-    }  # type: Dict[str, Media.KeyT]
-    return key_mapping.get(key.lower(), key)
+    }
+    return key_mapping.get(key.lower(), key)  # type: ignore[return-value]
 
 
 def match_maxsize(total: int, typ: str) -> Media:

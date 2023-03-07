@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import struct  # pack, unpack
-from typing import Union, Optional, Tuple, Iterator, BinaryIO
+from typing import Optional, Tuple, Iterator, BinaryIO
 from . import IcnsType, PackBytes
 
 
@@ -85,8 +85,9 @@ def icns_header_read(data: bytes) -> Tuple[IcnsType.Media.KeyT, int]:
         return data[:4], length  # Fallback to bytes-string key
 
 
-def icns_header_write_data(fp: BinaryIO, key: IcnsType.Media.KeyT,
-                           data: bytes) -> None:
+def icns_header_write_data(
+    fp: BinaryIO, key: IcnsType.Media.KeyT, data: bytes,
+) -> None:
     ''' Calculates length from data. '''
     fp.write(key.encode('utf8') if isinstance(key, str) else key)
     fp.write(struct.pack('>I', len(data) + 8))
