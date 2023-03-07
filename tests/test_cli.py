@@ -200,7 +200,7 @@ class TestCLI_update(unittest.TestCase):
 
 class TestCLI_print(unittest.TestCase):
     def test_single(self):
-        ret = run_cli(['p', 'rgb.icns']).stdout
+        ret = run_cli(['i', 'rgb.icns']).stdout
         for x in [b'rgb.icns', b'ICN#', b'il32', b'l8mk', b'ics#', b'is32',
                   b's8mk', b'it32', b't8mk', b'16x16', b'32x32', b'128x128']:
             self.assertTrue(x in ret)
@@ -209,11 +209,11 @@ class TestCLI_print(unittest.TestCase):
         self.assertFalse(b'offset' in ret)
 
     def test_verbose(self):
-        ret = run_cli(['p', '-v', 'rgb.icns']).stdout
+        ret = run_cli(['i', '-v', 'rgb.icns']).stdout
         self.assertTrue(b'offset' in ret)
 
     def test_multiple(self):
-        ret = run_cli(['p', 'rgb.icns', 'icp4rgb.icns']).stdout
+        ret = run_cli(['i', 'rgb.icns', 'icp4rgb.icns']).stdout
         for x in [b'rgb.icns', b'icp4rgb.icns', b'icp4', b'icp5']:
             self.assertTrue(x in ret)
         self.assertFalse(b'offset' in ret)

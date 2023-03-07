@@ -161,20 +161,20 @@ def main() -> None:
     parser.set_defaults(func=lambda _: parser.print_help(sys.stdout))
     parser.add_argument(
         '-v', '--version', action='version', version='icnsutil ' + __version__)
-    sub_parser = parser.add_subparsers(metavar='command')
+    sub_parser = parser.add_subparsers(metavar='command', dest='command')
 
     # helper method
     def add_command(
-        name: str, alias: str, fn: Callable[[ArgParams], None]
+        name: str, aliases: List[str], fn: Callable[[ArgParams], None]
     ) -> ArgumentParser:
         desc = fn.__doc__ or ''
-        cmd = sub_parser.add_parser(name, aliases=[alias],
-                                    help=desc, description=desc.strip())
+        cmd = sub_parser.add_parser(name, aliases=aliases, help=desc,
+                                    description=desc.strip())
         cmd.set_defaults(func=fn)
         return cmd
 
     # Extract
-    cmd = add_command('extract', 'e', cli_extract)
+    cmd = add_command('extract', ['e'], cli_extract)
     cmd.add_argument('-r', '--recursive', action='store_true',
                      help='extract nested icns files as well')
     cmd.add_argument('-o', '--export-dir', type=PathExist('d'),
@@ -189,7 +189,7 @@ def main() -> None:
                      metavar='FILE', help='One or more .icns files')
 
     # Compose
-    cmd = add_command('compose', 'c', cli_compose)
+    cmd = add_command('compose', ['c'], cli_compose)
     cmd.add_argument('-f', '--force', action='store_true',
                      help='Force overwrite output file')
     cmd.add_argument('--toc', action='store_true', help='''
@@ -207,7 +207,7 @@ def main() -> None:
         the file is automatically assigned to an icns file field.''')
 
     # Update
-    cmd = add_command('update', 'u', cli_update)
+    cmd = add_command('update', ['u'], cli_update)
     cmd.add_argument('file', type=PathExist('f', stdin=True),
                      metavar='FILE', help='The icns file to be updated.')
     cmd.add_argument('-o', '--output', type=str, metavar='OUT_FILE',
@@ -220,7 +220,7 @@ def main() -> None:
     cmd.epilog = 'KEY supports names like "dark", "selected", and "template"'
 
     # Print
-    cmd = add_command('print', 'p', cli_print)
+    cmd = add_command('info', ['i', 'p', 'print'], cli_print)
     cmd.add_argument('-v', '--verbose', action='store_true',
                      help='print all keys with offsets and sizes')
     cmd.add_argument('-q', '--quiet', action='store_true',
@@ -229,14 +229,14 @@ def main() -> None:
                      metavar='FILE', help='One or more .icns files.')
 
     # Verify
-    cmd = add_command('test', 't', cli_verify)
+    cmd = add_command('test', ['t'], cli_verify)
     cmd.add_argument('-q', '--quiet', action='store_true',
                      help='do not print OK results')
     cmd.add_argument('file', type=PathExist('f', stdin=True), nargs='+',
                      metavar='FILE', help='One or more .icns files.')
 
     # Convert
-    cmd = add_command('convert', 'img', cli_convert)
+    cmd = add_command('convert', ['img'], cli_convert)
     cmd.add_argument('--raw', action='store_true',
                      help='no post-processing. Do not prepend it32 header.')
     cmd.add_argument('target', type=str, metavar='destination',
@@ -247,6 +247,9 @@ def main() -> None:
                      help='Alpha mask. If set, assume src is RGB image.')
 
     args = parser.parse_args()
+    if args.command in ['p', 'print']:
+        print('{1}WARNING: command "{0}" is deprecated, use info instead.{1}'
+              .format(args.command, os.linesep), file=sys.stderr)
     args.func(args)
 
 

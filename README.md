@@ -31,7 +31,7 @@ positional arguments:
     extract (e)   Read and extract contents of icns file(s).
     compose (c)   Create new icns file from provided image files.
     update (u)    Update existing icns file by inserting or removing media entries.
-    print (p)     Print contents of icns file(s).
+    info (i)      Print contents of icns file(s).
     test (t)      Test if icns file is valid.
     convert (img) Convert images between PNG, ARGB, or RGB + alpha mask.
 ```
@@ -52,7 +52,7 @@ icnsutil u Existing.icns -set is32=16.rgb dark="dark icon.icns"
 icnsutil u Existing.icns -rm dark -set ic04=16.argb -o Updated.icns
 
 # print
-icnsutil p Existing.icns
+icnsutil i Existing.icns
 
 # verify valid format
 icnsutil t Existing.icns
