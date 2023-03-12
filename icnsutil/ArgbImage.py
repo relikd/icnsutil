@@ -38,6 +38,7 @@ class ArgbImage:
         *,
         data: Optional[bytes] = None,
         file: Optional[str] = None,
+        image: Optional['Image.Image'] = None,
         mask: Union[bytes, str, None] = None,
     ) -> None:
         '''
@@ -50,6 +51,8 @@ class ArgbImage:
             self.load_file(file)
         elif data:
             self.load_data(data)
+        elif image:
+            self._load_pillow_image(image)
         else:
             raise AttributeError('Neither data nor file provided.')
         if mask:
@@ -128,7 +131,10 @@ class ArgbImage:
     def _load_png(self, fname: str) -> None:
         if not PIL_ENABLED:
             raise ImportError('Install Pillow to support PNG conversion.')
-        img = Image.open(fname, mode='r').convert('RGBA')
+        self._load_pillow_image(Image.open(fname, mode='r'))
+
+    def _load_pillow_image(self, image: 'Image.Image') -> None:
+        img = image.convert('RGBA')
         self.size = img.size
         self.channels = 4
         self.a = []
