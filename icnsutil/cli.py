@@ -137,14 +137,19 @@ def enum_with_stdin(file_arg: List[str]) -> Iterator[str]:
         if x == '-':
             for line in sys.stdin.readlines():
                 yield line.strip()
+        elif x.lower().endswith('.iconset'):  # enum directory content
+            allowed_ext = IcnsType.supported_extensions()
+            for fname in os.listdir(x):
+                if os.path.splitext(fname)[1][1:].lower() in allowed_ext:
+                    yield os.path.join(x, fname)
         else:
             yield x
 
 
 def main() -> None:
     class PathExist:
-        def __init__(self, kind: Optional[str] = None, stdin: bool = False):
-            self.kind = kind
+        def __init__(self, kind: str, *, stdin: bool = False):
+            self.kind, *self.allowed_ext = kind.split('|')
             self.stdin = stdin
 
         def __call__(self, path: str) -> str:
@@ -153,6 +158,8 @@ def main() -> None:
             if not os.path.exists(path) or \
                     self.kind == 'f' and not os.path.isfile(path) or \
                     self.kind == 'd' and not os.path.isdir(path):
+                if os.path.splitext(path)[1].lower() in self.allowed_ext:
+                    return path
                 raise ArgumentTypeError('Does not exist "{}"'.format(path))
             return path
 
@@ -197,8 +204,8 @@ def main() -> None:
         TOC is optional and uses just a few bytes (8b per media entry).''')
     cmd.add_argument('target', type=str, metavar='destination',
                      help='Output file for newly created icns file.')
-    cmd.add_argument('source', type=PathExist('f', stdin=True), nargs='+',
-                     metavar='src', help='''
+    cmd.add_argument('source', type=PathExist('f|.iconset', stdin=True),
+                     nargs='+', metavar='src', help='''
         One or more media files: png, argb, rgb, jp2, icns.
         --
         Icon dimensions are read directly from file.

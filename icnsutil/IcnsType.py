@@ -4,7 +4,7 @@ Namespace for the ICNS format.
 @see https://en.wikipedia.org/wiki/Apple_Icon_Image_format
 '''
 import os  # path
-from typing import Union, Optional, Tuple, Iterator, List, Iterable
+from typing import Union, Optional, Tuple, Iterator, List, Iterable, Set
 from . import PackBytes, RawData
 
 
@@ -210,6 +210,10 @@ def enum_png_convertable(available_keys: Iterable[Media.KeyT]) \
                     mask_key = mask.key
                     break
             yield img.key, mask_key
+
+
+def supported_extensions() -> Set[str]:
+    return set(y for x in _TYPES.values() for y in x.types)
 
 
 def get(key: Media.KeyT) -> Media:
