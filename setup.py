@@ -12,10 +12,11 @@ setup(
     author='relikd',
     url='https://github.com/relikd/icnsutil',
     license='MIT',
-    packages=['icnsutil'],
+    packages=['icnsutil', 'icnsutil.autosize'],
     entry_points={
         'console_scripts': [
-            'icnsutil=icnsutil.cli:main'
+            'icnsutil = icnsutil.cli:main',
+            'icnsutil-autosize = icnsutil.autosize.cli:main',
         ]
     },
     extras_require={

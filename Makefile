@@ -13,7 +13,7 @@ install:
 uninstall:
 	python3 -m pip uninstall icnsutil
 	rm -rf ./*.egg-info/
-	-rm -i "$$(which icnsutil)"
+	-rm -i "$$(which icnsutil)" "$$(which icnsutil-autosize)"
 
 .PHONY: test
 test:
