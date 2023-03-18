@@ -14,16 +14,20 @@ Or you can install it **manually** by creating a symlink to `cli.py`:
 
 ```sh
 ln -s '/absolute/path/to/icnsutil/icnsutil/cli.py' /usr/local/bin/icnsutil
+ln -s '/absolute/path/to/icnsutil/icnsutil/autosize/cli.py' /usr/local/bin/icnsutil-autosize
 ```
 
 Or call the python module (if the module is in the search path):
 
 ```sh
 python3 -m icnsutil
+python3 -m icnsutil.autosize
 ```
 
 
 ## Usage
+
+See [#tools](#tools) for further options on icns processing (e.g., autosize).
 
 ```
 positional arguments:
@@ -128,7 +132,33 @@ with open('32x32.mask', 'wb') as fp:
 
 Note: the CLI `export` command will fail if you run `--convert` without Pillow.
 
-## HTML icon viewer
+
+## Tools
+
+### Autosize
+
+`icnsutil.autosize` is a tool to automatically generate smaller icon sizes from a larger one.
+Currently, autosize has support for “normal” raster images (via sips or Pillow) and SVG images (via [resvg] or Chrome Headless).
+
+```sh
+icnsutil-autosize icon.svg -32 intermediate.png -16 small.svg
+# or
+python3 -m icnsutil.autosize icon.svg -32 intermediate.png -16 small.svg
+```
+
+Additionally, `autosize` will also try to convert 32px and 16px PNG images to ARGB.
+If Pillow is not installed, this step will be skipped (without negative side effects).
+The output is an iconset folder with all necessary images.
+
+You may ask why this tool does not create the icns file immediatelly?
+This way you can modify the generated images before packing them into an icns file.
+For example, you can run [ImageOptim] to compress the images and reduce the overall icns filesize.
+
+[resvg]: https://github.com/RazrFalcon/resvg/
+[ImageOptim]: https://github.com/ImageOptim/ImageOptim
+
+
+### HTML icon viewer
 
 Here are two tools to open icns files directly in your browser. Both tools can be used either with an icns file or a rgb / argb image file.
 
