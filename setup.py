@@ -2,7 +2,7 @@
 from setuptools import setup
 from icnsutil import __doc__, __version__
 
-with open('README.md') as fp:
+with open('README.md', encoding='utf-8') as fp:
     longdesc = fp.read()
 
 setup(
@@ -52,4 +52,5 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Utilities',
     ],
+    include_package_data=True
 )
