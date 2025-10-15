@@ -172,6 +172,10 @@ class IcnsFile:
         # Nested icns files must omit the icns header
         if is_icns and data[:4] == b'icns':
             data = data[8:]
+        if key in ('icp4', 'icp5'):
+            iType = IcnsType.get(key)
+            print('Warning: deprecated "{}"({}) use argb instead'.format(
+                str(key), iType.filename(size_only=True)), file=stderr)
         self.media[key] = data
 
     def remove_media(self, key: IcnsType.Media.KeyT) -> bool:
