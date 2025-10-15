@@ -39,7 +39,7 @@ class ChromeSVG(SVGResizer):
 
     def resize(self, size: int, fname_out: str) -> None:
         run([self.exe, '--headless', '--disable-gpu', '--hide-scrollbars',
-             '--force-device-scale-factor=1', '--default-background-color=0',
-             '--window-size={0},{0}'.format(self.preferred_size),
-             '--screenshot="{}"'.format(self.fname), self.fname],
+             '--force-device-scale-factor=1', '--default-background-color=000000',
+             '--window-size={0},{0}'.format(size),
+             '--screenshot={}'.format(fname_out), self.fname],
             stderr=DEVNULL)
