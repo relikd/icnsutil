@@ -29,6 +29,32 @@ def determine_file_ext(data: bytes) -> Optional[str]:
     return None
 
 
+def _determine_jp2_size(data: bytes) -> Optional[Tuple[int, int]]:
+    ''' Read raw bytes and extract JPEG2000 image size. '''
+    if data[:4] == b'\xFF\x4F\xFF\x51':
+        w, h = struct.unpack('>II', data[8:16])
+        return w, h
+
+    # fixed "jP" file header 0000000C 6A502020 0D0A870A
+    off = 12
+    filesize = len(data)
+
+    while off < filesize:
+        box_size, box_type = struct.unpack('>I4s', data[off:off+8])
+        # find JP2 Header box
+        if box_type == b'jp2h':
+            child = off + 8  # skip parent header
+            while child < (off + box_size):
+                # find Image Header box
+                if data[child+4:child+8] == b'ihdr':
+                    h, w = struct.unpack('>II', data[child+8:child+16])
+                    return w, h
+
+                child += struct.unpack('>I', data[child:child+4])[0]
+        off += box_size
+    return None
+
+
 def determine_image_size(data: bytes, ext: Optional[str] = None) \
         -> Optional[Tuple[int, int]]:
     ''' Supports PNG, ARGB, and Jpeg 2000 image data. '''
@@ -45,14 +71,7 @@ def determine_image_size(data: bytes, ext: Optional[str] = None) \
             data = data[4:]  # without it32 header
         return IcnsType.match_maxsize(PackBytes.get_size(data), 'rgb').size
     elif ext == 'jp2':
-        if data[:4] == b'\xFF\x4F\xFF\x51':
-            w, h = struct.unpack('>II', data[8:16])
-            return w, h
-        len_ftype = struct.unpack('>I', data[12:16])[0]
-        # file header + type box + header box (super box) + image header box
-        offset = 12 + len_ftype + 8 + 8
-        h, w = struct.unpack('>II', data[offset:offset + 8])
-        return w, h
+        return _determine_jp2_size(data)
     return None  # icns does not support other image types except binary
 
 

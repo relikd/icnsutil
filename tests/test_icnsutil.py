@@ -444,6 +444,7 @@ class TestRawData(unittest.TestCase):
         self.assertEqual(fn('rgb.icns.argb'), (16, 16))
         self.assertEqual(fn('256x256.jp2'), (256, 256))
         self.assertEqual(fn('18x18.j2k'), (18, 18))
+        self.assertEqual(fn('32x32.jpf'), (32, 32))
 
     def test_ext(self):
         for data, ext in (

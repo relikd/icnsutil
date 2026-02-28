@@ -146,6 +146,7 @@ class TestCLI_compose(unittest.TestCase):
     def test_jp2(self):
         self.assert_conv_file('256x256.jp2', 'ic08')
         self.assert_conv_file('18x18.j2k', 'icsb', arg=['-f'])
+        self.assert_conv_file('32x32.jpf', 'icp5', arg=['-f'])
 
     def test_argb(self):
         self.assert_conv_file('rgb.icns.argb', 'ic04')
