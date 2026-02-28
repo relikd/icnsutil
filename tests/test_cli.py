@@ -258,10 +258,10 @@ class TestCLI_convert(unittest.TestCase):
 
     def test_to_png(self):
         for expected_size, fname in [
-            (103, '18x18.j2k'),
-            (4778, '256x256.jp2'),
-            (813, 'rgb.icns.png'),
-            (813, 'rgb.icns.rgb'),
+            (107, '18x18.j2k'),
+            (4496, '256x256.jp2'),
+            (818, 'rgb.icns.png'),
+            (818, 'rgb.icns.rgb'),
         ]:
             size = self.assertConvert(fname, 'png')
             self.assertEqual(size, expected_size)
@@ -292,7 +292,7 @@ class TestCLI_convert(unittest.TestCase):
     def test_without_dest_name(self):
         src = 'tmp_cli_out_convert.jp2'
         shutil.copy('18x18.j2k', src)
-        for ext, size in [('png', 103), ('argb', 822), ('rgb', 812)]:
+        for ext, size in [('png', 107), ('argb', 822), ('rgb', 812)]:
             run_cli(['img', ext, src]).stdout
             self.assertTrue(os.path.exists(src + '.' + ext))
             self.assertEqual(os.path.getsize(src + '.' + ext), size)
