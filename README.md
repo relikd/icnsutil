@@ -167,14 +167,3 @@ Here are two tools to open icns files directly in your browser. Both tools can b
 
 [inspector]: https://relikd.github.io/icnsutil/html/inspector.html
 [viewer]: https://relikd.github.io/icnsutil/html/viewer.html
-
-## Help needed
-
-1. Do you have an old macOS version running somewhere?  
-You can help and identify what file formats / icns types were introduced and when. Download the [format-support-icns.zip] file and report back which icons are displayed properly and in which macOS version.  
-See the [Apple Icon Image](https://en.wikipedia.org/wiki/Apple_Icon_Image) wikipedia article.
-
-2. You can run `make sys-icons-test` and report back whether you find some weird icons that are not handled properly by this library.
-
-[format-support-icns.zip]: https://github.com/relikd/icnsutil/raw/main/tests/format-support-icns.zip
-
