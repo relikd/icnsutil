@@ -2,6 +2,9 @@
 
 A fully-featured python library to handle reading and writing `.icns` files.
 
+A detailed anaylsis of the icns file format and field support can be found [here](https://github.com/relikd/icns-archive).
+
+
 ## Install
 
 The easy way is to use the PyPi.org index:
